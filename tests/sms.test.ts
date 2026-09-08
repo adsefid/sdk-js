@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AdsefidClient } from "../src/client.js";
 import { AdsefidValidationError } from "../src/errors.js";
+import type { TemplateParameters } from "../src/index.js";
 import { SmsResource } from "../src/resources/sms.js";
 import {
   bodyJson,
@@ -10,7 +11,7 @@ import {
   TEST_BASE_URL,
   testConfig,
 } from "./helpers/fetchStub.js";
-import { fixtureText } from "./helpers/fixtures.js";
+import { fixtureJson, fixtureText } from "./helpers/fixtures.js";
 
 function resourceFor(fixture: string) {
   const stub = fetchStub({ body: fixtureText(fixture) });
@@ -127,6 +128,24 @@ describe("template parameters", () => {
       quantity: 2,
       rate: 19.99,
     });
+  });
+
+  /**
+   * The shared cross-SDK example. All five SDKs serialize this parameter map to
+   * the same JSON, which is what keeps a template rendered identically no
+   * matter which SDK sent it.
+   */
+  it("serializes the shared example as the other SDKs do", () => {
+    const example = fixtureJson<{
+      parameters: TemplateParameters;
+      expected_json: string;
+    }>("validation/template_parameters.json");
+
+    const sorted = Object.fromEntries(
+      Object.entries(example.parameters).sort(([a], [b]) => (a < b ? -1 : 1)),
+    );
+
+    expect(JSON.stringify(sorted)).toBe(example.expected_json);
   });
 
   it("shows why a number literal would not do", () => {
