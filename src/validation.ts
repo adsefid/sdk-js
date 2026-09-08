@@ -7,8 +7,12 @@ import { AdsefidValidationError } from "./errors.js";
  */
 export const LOCAL_ID_PATTERN = /^[A-Za-z0-9]([A-Za-z0-9\-_.:]{0,34}[A-Za-z0-9])?$/;
 
+/**
+ * The service normalizes a blank `local_id` to "not supplied" before validating
+ * it, so an empty or whitespace-only value is accepted and simply omitted.
+ */
 export function assertValidLocalId(localId: string | undefined, field = "local_id"): void {
-  if (localId === undefined) {
+  if (localId === undefined || localId.trim() === "") {
     return;
   }
   if (!LOCAL_ID_PATTERN.test(localId)) {

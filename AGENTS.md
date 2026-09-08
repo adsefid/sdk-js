@@ -71,12 +71,31 @@ src/
 
 ## Hard rules
 
-- **No tests, ever.** Do not add a test file, a test directory, or an empty test stub to this repo.
+- **Every change ships with tests.** `tests/` runs on Vitest (`make test`), a devDependency only —
+  the published package keeps its zero runtime dependencies. Endpoint tests are table-driven
+  (`it.each`) rather than one function per case. `tsconfig.test.json` type-checks `tests/`
+  separately, because `tsconfig.json` pins `rootDir: "src"` for the build.
+- **Golden fixtures are shared across all five SDKs.** `tests/fixtures/` is byte-identical to the
+  same tree in the sibling repositories. Never edit one in isolation: change it in all five and
+  regenerate every `CHECKSUMS.txt`, or `tests/fixtures.test.ts` fails.
+- **`__ADSEFID_SDK_VERSION__` is a build-time define.** tsup injects it, and `vitest.config.ts` has
+  to define it too or the User-Agent falls back to `0+unknown`. Assert the `adsefid-js/` prefix in
+  tests, never an exact version.
 - **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsup`, `@types/node`) are fine.
 - **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) is a named constant near its use, not an inline number.
 - **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step, why `codeName` isn't called `name`, why dates stay strings).
 - **Throw on error, always.** Every resource method throws `AdsefidError` subclasses on failure; never introduce a `Result`/`Either` return wrapper. Partial-success bulk/P2P responses are normal typed returns, not errors — that's an API design choice already baked into the response shape.
 - **Datetimes stay strings.** Never introduce a `Date` conversion anywhere in this codebase — see the README's "Dates are plain ISO-8601 strings" section for why. If you're tempted to parse a date field, don't; let the consumer do it.
+- **Template parameter values.** `TemplateParameterValue`/`TemplateParameters` live once in
+  `models/common.ts`; `models/sms.ts` and `models/messenger.ts` both import from there. A `number`
+  parameter may legitimately travel as a JSON *string* — that is how leading zeros (`"001234"`) and
+  exact decimals (`"1.50"`) reach the service intact, since it substitutes a numeric string
+  verbatim and JavaScript numbers are IEEE-754 doubles.
+- **The webhook secret is Base64.** A webhook endpoint's secret is 32 random bytes shown
+  Base64-encoded in the panel, and the service signs with the **decoded** bytes.
+  `verifyAndParseWebhook` decodes before keying the HMAC, accepts a `Uint8Array` for a pre-decoded
+  key, and hashes the raw body bytes rather than a re-encoded string. Keying the HMAC with the
+  UTF-8 bytes of the Base64 string does not verify against the live service.
 - **No retry logic anywhere in this SDK.** Every request is a single attempt.
 
 ## Build / typecheck

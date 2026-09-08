@@ -24,6 +24,8 @@ export type {
   ErrorEnvelope,
   StatusQuery,
   SuccessEnvelope,
+  TemplateParameters,
+  TemplateParameterValue,
   WebServiceCodeCounts,
   WebServiceStatus,
 } from "./models/common.js";
@@ -39,12 +41,12 @@ export type {
   P2pMessengerReceptorResult,
   SendBulkMessengerRequest,
   SendBulkMessengerResponse,
-  SendMessengerTemplateRequest,
-  SendMessengerTemplateResponse,
   SendP2pMessengerRequest,
   SendP2pMessengerResponse,
   SendSingleMessengerRequest,
   SendSingleMessengerResponse,
+  SendTemplateMessengerRequest,
+  SendTemplateMessengerResponse,
   UploadMessengerFileResponse,
 } from "./models/messenger.js";
 export {
@@ -69,10 +71,9 @@ export type {
   SendP2pSmsResponse,
   SendSingleSmsRequest,
   SendSingleSmsResponse,
-  SendSmsTemplateRequest,
-  SendSmsTemplateResponse,
+  SendTemplateSmsRequest,
+  SendTemplateSmsResponse,
   SmsStatusReceptor,
-  TemplateParameters,
 } from "./models/sms.js";
 export type {
   GetUserInfoResponse,

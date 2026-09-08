@@ -1,8 +1,10 @@
 import type { WebServiceStatus } from "../enums.js";
-import type { CancelRequest, CancelResponse, WebServiceCodeCounts } from "./common.js";
-import type { TemplateParameters } from "./sms.js";
-
-export type { TemplateParameters };
+import type {
+  CancelRequest,
+  CancelResponse,
+  TemplateParameters,
+  WebServiceCodeCounts,
+} from "./common.js";
 
 // ---------------------------------------------------------------------------
 // 5.1 POST /v1/messenger/single
@@ -158,7 +160,7 @@ export type CancelMessengerResponse = CancelResponse;
 // ---------------------------------------------------------------------------
 
 /** Request body for `client.messenger.sendTemplate` — `POST /v1/messenger/template` (doc §5.6). */
-export interface SendMessengerTemplateRequest {
+export interface SendTemplateMessengerRequest {
   template_id: string;
   parameters: TemplateParameters;
   receptor: string;
@@ -167,7 +169,7 @@ export interface SendMessengerTemplateRequest {
   expiry_date?: string;
 }
 
-export interface SendMessengerTemplateResponse {
+export interface SendTemplateMessengerResponse {
   group_id: string;
   message_id: string;
   status: WebServiceStatus;
