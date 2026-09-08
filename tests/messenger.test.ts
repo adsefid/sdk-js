@@ -18,7 +18,11 @@ describe("request building", () => {
   it("sends a single message with only the fields that were supplied", async () => {
     const { messenger, stub } = resourceFor("envelopes/messenger.send_single.success.json");
 
-    await messenger.sendSingle({ message: "hi", receptor: "98912xxxxxxx", profile: "profile-1" });
+    const result = await messenger.sendSingle({
+      message: "hi",
+      receptor: "98912xxxxxxx",
+      profile: "profile-1",
+    });
 
     const call = stub.only();
     expect(call.method).toBe("POST");
@@ -26,22 +30,82 @@ describe("request building", () => {
     for (const key of ["hide", "file_id", "send_time", "local_id"]) {
       expect(bodyJson(call)).not.toHaveProperty(key);
     }
+    expect(result.send_time).toBeInstanceOf(Date);
+  });
+
+  const scheduledRequests: Array<
+    [string, string, (messenger: MessengerResource, date: Date) => Promise<unknown>, string]
+  > = [
+    [
+      "single send_time",
+      "envelopes/messenger.send_single.success.json",
+      (messenger, date) =>
+        messenger.sendSingle({ message: "m", receptor: "a", profile: "p", send_time: date }),
+      "send_time",
+    ],
+    [
+      "bulk send_time",
+      "envelopes/messenger.send_bulk.success.json",
+      (messenger, date) =>
+        messenger.sendBulk({
+          receptors: [{ receptor: "a" }],
+          message: "m",
+          profile: "p",
+          send_time: date,
+        }),
+      "send_time",
+    ],
+    [
+      "p2p send_time",
+      "envelopes/messenger.send_p2p.partial_success.json",
+      (messenger, date) =>
+        messenger.sendP2P({
+          receptors: [{ receptor: "a", message: "m" }],
+          profile: "p",
+          send_time: date,
+        }),
+      "send_time",
+    ],
+    [
+      "template expiry_date",
+      "envelopes/messenger.send_template.success.json",
+      (messenger, date) =>
+        messenger.sendTemplate({
+          template_id: "t",
+          parameters: {},
+          receptor: "a",
+          profile: "p",
+          expiry_date: date,
+        }),
+      "expiry_date",
+    ],
+  ];
+
+  it.each(scheduledRequests)("serializes %s explicitly", async (_name, fixture, call, field) => {
+    const { messenger, stub } = resourceFor(fixture);
+    const date = new Date("2026-04-04T11:00:00+03:30");
+
+    await call(messenger, date);
+
+    expect(bodyJson(stub.only())[field]).toBe(date.toISOString());
   });
 
   it("builds the status query", async () => {
     const { messenger, stub } = resourceFor("envelopes/messenger.get_status.success.json");
 
-    await messenger.getStatus({ message_ids: ["m1"], local_ids: ["l1"] });
+    const result = await messenger.getStatus({ message_ids: ["m1"], local_ids: ["l1"] });
 
     const query = queryOf(stub.only());
     expect(query.get("message_ids")).toBe("m1");
     expect(query.get("local_ids")).toBe("l1");
+    expect(result.receptors[0]?.send_time).toBeInstanceOf(Date);
+    expect(result.receptors[0]?.delivery_time).toBeInstanceOf(Date);
   });
 
   it("keeps leading zeros in template parameters", async () => {
     const { messenger, stub } = resourceFor("envelopes/messenger.send_template.success.json");
 
-    await messenger.sendTemplate({
+    const result = await messenger.sendTemplate({
       template_id: "invoice_notice",
       parameters: { invoice: "001234", amount: 2 },
       receptor: "98912xxxxxxx",
@@ -49,6 +113,8 @@ describe("request building", () => {
     });
 
     expect(bodyJson(stub.only()).parameters).toEqual({ invoice: "001234", amount: 2 });
+    expect(result.send_time).toBeInstanceOf(Date);
+    expect(result.expiry_date).toBeInstanceOf(Date);
   });
 });
 
@@ -65,6 +131,7 @@ describe("partial success is not an error", () => {
     expect(result.receptors.map((r) => r.status)).toEqual([1000, 2025]);
     expect(result.receptors[1]?.message_id).toBeNull();
     expect(result.counts["2025"]).toBe(1);
+    expect(result.send_time).toBeInstanceOf(Date);
   });
 
   it("returns p2p results with per-receptor failure codes intact", async () => {
@@ -76,6 +143,7 @@ describe("partial success is not an error", () => {
     });
 
     expect(result.receptors.map((r) => r.status)).toEqual([1000, 2014]);
+    expect(result.send_time).toBeInstanceOf(Date);
   });
 });
 

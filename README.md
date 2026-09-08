@@ -78,11 +78,17 @@ const client = new AdsefidClient({
 
 Monetary response fields (`cost`, `total_cost`, and `credit_left`) use `number` and may contain fractional values.
 
-## Dates are plain ISO-8601 strings, not `Date` objects
+## Dates use native `Date` objects
 
-Every datetime field in this SDK — `send_time`, `expiry_date`, `receive_date`, `delivery_time`, `since`, `created_at`, `updated_at`, `occurred_at` — is typed as a plain `string`, both in requests you send and responses you receive. **The SDK never converts these to JavaScript `Date` objects, and you should be careful not to either.**
+Every datetime field in this SDK — `send_time`, `expiry_date`, `receive_date`, `delivery_time`,
+`since`, `created_at`, `updated_at`, and `occurred_at` — uses a native JavaScript `Date`. Pass
+`Date` objects in requests; responses and verified webhook events return `Date` objects. The SDK
+explicitly serializes request dates with `toISOString()` and parses each documented response field.
 
-The adsefid.com API returns timestamps with explicit UTC offsets like `+03:30` (Iran Standard Time). A native JS `Date` has no concept of "the offset the source used" — the moment you do `new Date("2026-04-04T10:30:00+03:30")`, the offset is normalized away and silently lost the instant you read it back out (`.toISOString()` always renders in UTC, `.toString()` renders in the *host machine's* local zone — neither preserves `+03:30`). Since the API's own semantics (e.g. "must be >= now + 1 minute") are offset-sensitive and this is a wire-format API, we keep the exact string the server gave you (or that you constructed) untouched all the way through. If you need to do date arithmetic, parse the string yourself with a timezone-aware library (e.g. `Temporal`, `date-fns-tz`, `luxon`) and re-serialize back to an ISO-8601 string with the offset you want before sending it back to the API.
+`Date` preserves the instant, not the source offset. An API value such as
+`2026-04-04T10:30:00+03:30` becomes the same instant as `2026-04-04T07:00:00.000Z`. Calling
+`toISOString()` therefore returns UTC. Invalid request dates throw `AdsefidValidationError`; an
+invalid datetime in a successful API response throws `AdsefidTransportError`.
 
 ## Resource reference
 
@@ -330,7 +336,7 @@ so don't assume every deployment gets all three; handle whichever ones you've su
 
 This SDK follows Semantic Versioning independently of the API documentation.
 
-- SDK version: **`0.3.0`** (`version` in `package.json`)
+- SDK version: **`0.4.0`** (`version` in `package.json`)
 - Verified API documentation: **`v1.12.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.

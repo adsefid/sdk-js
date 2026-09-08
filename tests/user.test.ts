@@ -54,6 +54,8 @@ describe("templates", () => {
     expect(result.items[0]?.state).toBe("approved");
     expect(result.items[0]?.parameters).toEqual({ OTPCode: "string", amount: "number" });
     expect(result.items[0]?.description).toBeNull();
+    expect(result.items[0]?.created_at).toBeInstanceOf(Date);
+    expect(result.items[0]?.updated_at).toBeInstanceOf(Date);
   });
 
   it("drops undocumented parameter types", async () => {

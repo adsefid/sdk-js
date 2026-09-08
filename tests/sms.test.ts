@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AdsefidClient } from "../src/client.js";
-import { AdsefidValidationError } from "../src/errors.js";
+import { AdsefidTransportError, AdsefidValidationError } from "../src/errors.js";
 import type { TemplateParameters } from "../src/index.js";
 import { SmsResource } from "../src/resources/sms.js";
 import {
@@ -54,27 +54,79 @@ describe("request building", () => {
       local_id: "order-1",
       hide: true,
       line_selector: 2,
-      send_time: "2026-04-04T11:00:00+03:30",
+      send_time: new Date("2026-04-04T11:00:00+03:30"),
     });
 
     expect(bodyJson(stub.only())).toMatchObject({
       local_id: "order-1",
       hide: true,
       line_selector: 2,
-      send_time: "2026-04-04T11:00:00+03:30",
+      send_time: "2026-04-04T07:30:00.000Z",
     });
+  });
+
+  const scheduledRequests: Array<
+    [string, string, (sms: SmsResource, date: Date) => Promise<unknown>, string]
+  > = [
+    [
+      "bulk send_time",
+      "envelopes/sms.send_bulk.partial_success.json",
+      (sms, date) =>
+        sms.sendBulk({
+          receptors: [{ receptor: "a" }],
+          message: "m",
+          line_number: "3000",
+          send_time: date,
+        }),
+      "send_time",
+    ],
+    [
+      "p2p send_time",
+      "envelopes/sms.send_p2p.partial_success.json",
+      (sms, date) =>
+        sms.sendP2P({
+          messages: [{ receptor: "a", message: "m" }],
+          line_number: "3000",
+          send_time: date,
+        }),
+      "send_time",
+    ],
+    [
+      "template expiry_date",
+      "envelopes/sms.send_template.success.json",
+      (sms, date) =>
+        sms.sendTemplate({
+          template_id: "t",
+          parameters: {},
+          receptor: "a",
+          line_number: "3000",
+          expiry_date: date,
+        }),
+      "expiry_date",
+    ],
+  ];
+
+  it.each(scheduledRequests)("serializes %s explicitly", async (_name, fixture, call, field) => {
+    const { sms, stub } = resourceFor(fixture);
+    const date = new Date("2026-04-04T11:00:00+03:30");
+
+    await call(sms, date);
+
+    expect(bodyJson(stub.only())[field]).toBe(date.toISOString());
   });
 
   it("joins status ids into CSV query params", async () => {
     const { sms, stub } = resourceFor("envelopes/sms.get_status.success.json");
 
-    await sms.getStatus({ message_ids: ["m1", "m2"], local_ids: ["l1"] });
+    const result = await sms.getStatus({ message_ids: ["m1", "m2"], local_ids: ["l1"] });
 
     const call = stub.only();
     expect(call.method).toBe("GET");
     const query = queryOf(call);
     expect(query.get("message_ids")).toBe("m1,m2");
     expect(query.get("local_ids")).toBe("l1");
+    expect(result.receptors[0]?.send_time).toBeInstanceOf(Date);
+    expect(result.receptors[0]?.delivery_time).toBeNull();
   });
 
   it("omits a CSV param entirely when its array is empty", async () => {
@@ -90,12 +142,21 @@ describe("request building", () => {
   it("builds the receive query", async () => {
     const { sms, stub } = resourceFor("envelopes/sms.get_received.success.json");
 
-    await sms.getReceived({ line_number: "3000xxxx", count: 10 });
+    const since = new Date("2026-04-04T00:00:00+03:30");
+    await sms.getReceived({ line_number: "3000xxxx", count: 10, since });
 
     const query = queryOf(stub.only());
     expect(query.get("line_number")).toBe("3000xxxx");
     expect(query.get("count")).toBe("10");
-    expect(query.has("since")).toBe(false);
+    expect(query.get("since")).toBe(since.toISOString());
+  });
+
+  it("omits an unspecified since value", async () => {
+    const { sms, stub } = resourceFor("envelopes/sms.get_received.success.json");
+
+    await sms.getReceived({ line_number: "3000xxxx" });
+
+    expect(queryOf(stub.only()).has("since")).toBe(false);
   });
 });
 
@@ -167,6 +228,27 @@ describe("template parameters", () => {
     });
 
     expect(result.parameters).toEqual({ code: "459122", minutes: 2 });
+    expect(result.send_time).toBeInstanceOf(Date);
+    expect(result.expiry_date).toBeInstanceOf(Date);
+  });
+
+  it("does not parse datetime-like template parameter keys", async () => {
+    const fixture = fixtureJson<{
+      status: string;
+      data: { parameters: Record<string, string | number> };
+    }>("envelopes/sms.send_template.success.json");
+    fixture.data.parameters.send_time = "literal parameter value";
+    const stub = fetchStub({ body: JSON.stringify(fixture) });
+    const sms = new SmsResource(testConfig(stub));
+
+    const result = await sms.sendTemplate({
+      template_id: "otp_login",
+      parameters: {},
+      receptor: "a",
+      line_number: "3000",
+    });
+
+    expect(result.parameters.send_time).toBe("literal parameter value");
   });
 });
 
@@ -183,8 +265,8 @@ describe("response parsing", () => {
     expect(result.status).toBe(1000);
     expect(result.segment_count).toBe(1);
     expect(result.cost).toBe(120);
-    // Datetimes stay plain ISO-8601 strings; this SDK never builds a Date.
-    expect(typeof result.send_time).toBe("string");
+    expect(result.send_time).toBeInstanceOf(Date);
+    expect(result.send_time.toISOString()).toBe("2026-04-04T07:00:00.000Z");
   });
 
   it("parses a cancel result", async () => {
@@ -202,7 +284,21 @@ describe("response parsing", () => {
     const result = await sms.getReceived({ line_number: "3000xxxx" });
 
     expect(result.messages.length).toBeGreaterThan(0);
-    expect(typeof result.messages[0]?.receive_date).toBe("string");
+    expect(result.messages[0]?.receive_date).toBeInstanceOf(Date);
+  });
+
+  it("rejects an invalid datetime in a success response", async () => {
+    const fixture = fixtureJson<{
+      status: string;
+      data: Record<string, unknown>;
+    }>("envelopes/sms.send_single.success.json");
+    fixture.data.send_time = "not-a-date";
+    const stub = fetchStub({ body: JSON.stringify(fixture) });
+    const sms = new SmsResource(testConfig(stub));
+
+    await expect(
+      sms.sendSingle({ receptor: "a", line_number: "3000", message: "m" }),
+    ).rejects.toBeInstanceOf(AdsefidTransportError);
   });
 });
 
@@ -223,6 +319,7 @@ describe("partial success is not an error", () => {
     expect(result.receptors[1]?.message_id).toBeNull();
     expect(result.counts["2025"]).toBe(1);
     expect(result.total_count).toBe(2);
+    expect(result.send_time).toBeInstanceOf(Date);
   });
 
   it("returns p2p results with per-message failure codes intact", async () => {
@@ -234,6 +331,7 @@ describe("partial success is not an error", () => {
     });
 
     expect(result.messages.map((m) => m.status)).toEqual([1000, 2014]);
+    expect(result.send_time).toBeInstanceOf(Date);
   });
 });
 
@@ -265,6 +363,16 @@ describe("validation rejects before any request is sent", () => {
     ["receive count of zero", () => sms.getReceived({ line_number: "3000", count: 0 })],
     ["receive count over 499", () => sms.getReceived({ line_number: "3000", count: 500 })],
     ["receive with empty line number", () => sms.getReceived({ line_number: "" })],
+    [
+      "an invalid Date",
+      () =>
+        sms.sendSingle({
+          receptor: "a",
+          line_number: "3000",
+          message: "m",
+          send_time: new Date(Number.NaN),
+        }),
+    ],
   ];
 
   it.each(cases)("rejects %s", async (_name, call) => {

@@ -16,8 +16,7 @@ export interface SendSingleSmsRequest {
   line_number: string;
   line_selector?: LineSelector;
   message: string;
-  /** Raw ISO-8601 string, e.g. "2026-04-04T10:30:00+03:30". Never a `Date`. */
-  send_time?: string;
+  send_time?: Date;
   local_id?: string;
   hide?: boolean;
 }
@@ -30,7 +29,7 @@ export interface SendSingleSmsResponse {
   line_selector: LineSelector;
   cost: number;
   receptor: string;
-  send_time: string;
+  send_time: Date;
   message_id: string;
   segment_count: number;
   hide: boolean;
@@ -50,7 +49,7 @@ export interface BulkSmsReceptorRequest {
 export interface SendBulkSmsRequest {
   receptors: BulkSmsReceptorRequest[];
   message: string;
-  send_time?: string;
+  send_time?: Date;
   line_number: string;
   line_selector?: LineSelector;
 }
@@ -69,7 +68,7 @@ export interface SendBulkSmsResponse {
   receptors: BulkSmsReceptorResult[];
   message: string;
   segment_count: number;
-  send_time: string;
+  send_time: Date;
   line_number: string;
   line_selector: LineSelector;
   counts: WebServiceCodeCounts;
@@ -91,7 +90,7 @@ export interface P2pSmsMessageRequest {
 /** Request body for `client.sms.sendP2P` — `POST /v1/sms/p2p` (doc §4.3): distinct messages per receptor. */
 export interface SendP2pSmsRequest {
   messages: P2pSmsMessageRequest[];
-  send_time?: string;
+  send_time?: Date;
   line_number: string;
   line_selector?: LineSelector;
 }
@@ -110,7 +109,7 @@ export interface P2pSmsMessageResult {
 export interface SendP2pSmsResponse {
   group_id: string;
   messages: P2pSmsMessageResult[];
-  send_time: string;
+  send_time: Date;
   line_number: string;
   line_selector: LineSelector;
   total_cost: number;
@@ -129,8 +128,8 @@ export interface SendTemplateSmsRequest {
   local_id?: string;
   line_number: string;
   line_selector?: LineSelector;
-  /** Raw ISO-8601 string. Must be >= now + 1 minute per the API. */
-  expiry_date?: string;
+  /** Must be at least one minute in the future per the API. */
+  expiry_date?: Date;
 }
 
 export interface SendTemplateSmsResponse {
@@ -140,8 +139,8 @@ export interface SendTemplateSmsResponse {
   local_id: string | null;
   line_number: string;
   template_id: string;
-  send_time: string;
-  expiry_date: string | null;
+  send_time: Date;
+  expiry_date: Date | null;
   line_selector: LineSelector;
   cost: number;
   receptor: string;
@@ -165,8 +164,8 @@ export interface SmsStatusReceptor {
   local_id: string | null;
   status: WebServiceStatus;
   receptor: string;
-  send_time: string;
-  delivery_time: string | null;
+  send_time: Date;
+  delivery_time: Date | null;
 }
 
 export interface GetSmsStatusResponse {
@@ -188,14 +187,14 @@ export type CancelSmsResponse = CancelResponse;
 export interface GetReceivedSmsQuery {
   line_number: string;
   count?: number;
-  /** Raw ISO-8601 string. Must be in the past. */
-  since?: string;
+  /** Must be in the past per the API. */
+  since?: Date;
 }
 
 export interface ReceivedSmsMessage {
   message: string;
   line_number: string;
-  receive_date: string;
+  receive_date: Date;
   sender: string;
 }
 

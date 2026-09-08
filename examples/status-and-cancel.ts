@@ -18,9 +18,8 @@ if (!apiKey || !lineNumber) {
 
 const client = new AdsefidClient({ apiKey });
 
-// Schedule far enough ahead that there is something to cancel. Datetimes are
-// plain ISO-8601 strings; this SDK never converts to or from a Date.
-const sendTime = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+// Schedule far enough ahead that there is something to cancel.
+const sendTime = new Date(Date.now() + 2 * 60 * 60_000);
 const sent = await client.sms.sendSingle({
   receptor: "09120000000",
   line_number: lineNumber,
@@ -28,7 +27,7 @@ const sent = await client.sms.sendSingle({
   send_time: sendTime,
   local_id: "demo-cancel-1",
 });
-console.log(`scheduled ${sent.message_id} for ${sendTime}`);
+console.log(`scheduled ${sent.message_id} for ${sendTime.toISOString()}`);
 
 // Look it up by our ID and by your own local_id at the same time.
 const status = await client.sms.getStatus({
@@ -38,7 +37,7 @@ const status = await client.sms.getStatus({
 console.log(`\nstatus for ${status.receptors.length} message(s):`);
 for (const item of status.receptors) {
   console.log(
-    `  ${item.message_id} -> ${item.status} (delivered: ${item.delivery_time ?? "not yet"})`,
+    `  ${item.message_id} -> ${item.status} (delivered: ${item.delivery_time?.toISOString() ?? "not yet"})`,
   );
 }
 
@@ -56,9 +55,11 @@ for (const item of cancelled.failed_to_cancel) {
 const received = await client.sms.getReceived({
   line_number: lineNumber,
   count: 50,
-  since: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
+  since: new Date(Date.now() - 24 * 60 * 60_000),
 });
 console.log(`\n${received.messages.length} inbound message(s) in the last 24h:`);
 for (const message of received.messages) {
-  console.log(`  from ${message.sender} at ${message.receive_date}: ${message.message}`);
+  console.log(
+    `  from ${message.sender} at ${message.receive_date.toISOString()}: ${message.message}`,
+  );
 }

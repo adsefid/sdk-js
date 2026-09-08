@@ -6,7 +6,7 @@ export interface ReceiveWebhookItem {
   line_number: string;
   sender: string;
   message: string;
-  receive_date: string;
+  receive_date: Date;
 }
 
 /** One item of a `status` / `messenger.status` webhook payload, per doc §7.5-7.6. */
@@ -14,12 +14,12 @@ export interface StatusWebhookItem {
   id: string;
   local_id: string | null;
   status_delivery: WebServiceStatus;
-  delivery_time: string | null;
+  delivery_time: Date | null;
 }
 
 interface WebhookEventBase {
   id: string;
-  occurred_at: string;
+  occurred_at: Date;
   attempt: number;
   version: string;
 }

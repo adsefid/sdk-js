@@ -1,6 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { dateFromWire, nullableDateFromWire, type Wire } from "../dates.js";
 import { AdsefidWebhookVerificationError } from "../errors.js";
-import type { WebhookEvent } from "./events.js";
+import type {
+  MessengerStatusWebhookEvent,
+  ReceiveWebhookEvent,
+  StatusWebhookEvent,
+  StatusWebhookItem,
+  WebhookEvent,
+} from "./events.js";
 import { WEBHOOK_EVENT_TYPES } from "./headers.js";
 
 const SIGNATURE_PREFIX = "v1=";
@@ -134,5 +141,61 @@ function parseWebhookEvent(value: unknown): WebhookEvent {
   ) {
     throw new AdsefidWebhookVerificationError("Webhook payload is missing required fields");
   }
-  return value as WebhookEvent;
+  const occurredAt = dateFromWire(
+    record.occurred_at,
+    "occurred_at",
+    AdsefidWebhookVerificationError,
+  );
+
+  switch (type) {
+    case WEBHOOK_EVENT_TYPES.receive: {
+      const event = value as Wire<ReceiveWebhookEvent>;
+      return {
+        ...event,
+        occurred_at: occurredAt,
+        data: event.data.map((item, index) => {
+          const record = webhookItem(item, index);
+          return {
+            ...record,
+            receive_date: dateFromWire(
+              record.receive_date,
+              `data[${index}].receive_date`,
+              AdsefidWebhookVerificationError,
+            ),
+          };
+        }),
+      };
+    }
+    case WEBHOOK_EVENT_TYPES.status: {
+      const event = value as Wire<StatusWebhookEvent>;
+      return { ...event, occurred_at: occurredAt, data: parseStatusItems(event.data) };
+    }
+    case WEBHOOK_EVENT_TYPES.messengerStatus: {
+      const event = value as Wire<MessengerStatusWebhookEvent>;
+      return { ...event, occurred_at: occurredAt, data: parseStatusItems(event.data) };
+    }
+    default:
+      throw new AdsefidWebhookVerificationError(`Unknown webhook event type: ${String(type)}`);
+  }
+}
+
+function parseStatusItems(items: Wire<StatusWebhookItem>[]): StatusWebhookItem[] {
+  return items.map((item, index) => {
+    const record = webhookItem(item, index);
+    return {
+      ...record,
+      delivery_time: nullableDateFromWire(
+        record.delivery_time,
+        `data[${index}].delivery_time`,
+        AdsefidWebhookVerificationError,
+      ),
+    };
+  });
+}
+
+function webhookItem<TItem extends object>(value: TItem, index: number): TItem {
+  if (typeof value !== "object" || value === null) {
+    throw new AdsefidWebhookVerificationError(`'data[${index}]' must be an object.`);
+  }
+  return value;
 }

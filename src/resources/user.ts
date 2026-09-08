@@ -1,4 +1,5 @@
 import type { ResolvedAdsefidClientOptions } from "../config.js";
+import { dateFromWire, type Wire } from "../dates.js";
 import { TemplateParameterType } from "../enums.js";
 import { sendRequest } from "../http.js";
 import type {
@@ -50,7 +51,7 @@ export class UserResource {
       assertInRange(query.skip, 0, Number.MAX_SAFE_INTEGER, "skip");
     }
 
-    const response = await sendRequest<GetUserTemplatesResponse>(this.config, {
+    const response = await sendRequest<Wire<GetUserTemplatesResponse>>(this.config, {
       method: "GET",
       path: "/v1/user/templates",
       query: {
@@ -64,6 +65,8 @@ export class UserResource {
       ...response,
       items: response.items.map((item) => ({
         ...item,
+        created_at: dateFromWire(item.created_at, "created_at"),
+        updated_at: dateFromWire(item.updated_at, "updated_at"),
         parameters: Object.fromEntries(
           Object.entries(item.parameters).filter(
             ([, type]) =>

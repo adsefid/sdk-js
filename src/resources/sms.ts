@@ -1,4 +1,5 @@
 import type { ResolvedAdsefidClientOptions } from "../config.js";
+import { dateFromWire, dateToWire, nullableDateFromWire, type Wire } from "../dates.js";
 import { sendRequest } from "../http.js";
 import type {
   CancelSmsRequest,
@@ -45,11 +46,13 @@ export class SmsResource {
     assertMaxLength(request.message, SMS_MESSAGE_MAX_LENGTH, "message");
     assertValidLocalId(request.local_id, "local_id");
 
-    return sendRequest<SendSingleSmsResponse>(this.config, {
+    const response = await sendRequest<Wire<SendSingleSmsResponse>>(this.config, {
       method: "POST",
       path: "/v1/sms/single",
-      jsonBody: request,
+      jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
+
+    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/bulk — doc §4.2 */
@@ -63,11 +66,13 @@ export class SmsResource {
       assertValidLocalId(receptor.local_id, `receptors[${index}].local_id`);
     });
 
-    return sendRequest<SendBulkSmsResponse>(this.config, {
+    const response = await sendRequest<Wire<SendBulkSmsResponse>>(this.config, {
       method: "POST",
       path: "/v1/sms/bulk",
-      jsonBody: request,
+      jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
+
+    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/p2p — doc §4.3 */
@@ -81,11 +86,13 @@ export class SmsResource {
       assertValidLocalId(message.local_id, `messages[${index}].local_id`);
     });
 
-    return sendRequest<SendP2pSmsResponse>(this.config, {
+    const response = await sendRequest<Wire<SendP2pSmsResponse>>(this.config, {
       method: "POST",
       path: "/v1/sms/p2p",
-      jsonBody: request,
+      jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
+
+    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/template — doc §4.4 */
@@ -96,11 +103,17 @@ export class SmsResource {
     assertRequired(request.line_number, "line_number");
     assertValidLocalId(request.local_id, "local_id");
 
-    return sendRequest<SendTemplateSmsResponse>(this.config, {
+    const response = await sendRequest<Wire<SendTemplateSmsResponse>>(this.config, {
       method: "POST",
       path: "/v1/sms/template",
-      jsonBody: request,
+      jsonBody: { ...request, expiry_date: dateToWire(request.expiry_date, "expiry_date") },
     });
+
+    return {
+      ...response,
+      send_time: dateFromWire(response.send_time, "send_time"),
+      expiry_date: nullableDateFromWire(response.expiry_date, "expiry_date"),
+    };
   }
 
   /** GET /v1/sms/status — doc §4.5 */
@@ -113,7 +126,7 @@ export class SmsResource {
       new Set(query.message_ids ?? []).size + new Set(query.local_ids ?? []).size;
     assertMaxCount(combinedCount, MAX_STATUS_IDS, "message_ids+local_ids");
 
-    return sendRequest<GetSmsStatusResponse>(this.config, {
+    const response = await sendRequest<Wire<GetSmsStatusResponse>>(this.config, {
       method: "GET",
       path: "/v1/sms/status",
       query: {
@@ -121,6 +134,14 @@ export class SmsResource {
         local_ids: joinCsv(query.local_ids),
       },
     });
+
+    return {
+      receptors: response.receptors.map((receptor) => ({
+        ...receptor,
+        send_time: dateFromWire(receptor.send_time, "send_time"),
+        delivery_time: nullableDateFromWire(receptor.delivery_time, "delivery_time"),
+      })),
+    };
   }
 
   /** POST /v1/sms/cancel — doc §4.6 */
@@ -144,14 +165,21 @@ export class SmsResource {
       assertInRange(query.count, RECEIVE_COUNT_MIN, RECEIVE_COUNT_MAX, "count");
     }
 
-    return sendRequest<GetReceivedSmsResponse>(this.config, {
+    const response = await sendRequest<Wire<GetReceivedSmsResponse>>(this.config, {
       method: "GET",
       path: "/v1/sms/receive",
       query: {
         line_number: query.line_number,
         count: query.count?.toString(),
-        since: query.since,
+        since: dateToWire(query.since, "since"),
       },
     });
+
+    return {
+      messages: response.messages.map((message) => ({
+        ...message,
+        receive_date: dateFromWire(message.receive_date, "receive_date"),
+      })),
+    };
   }
 }
