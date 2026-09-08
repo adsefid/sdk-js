@@ -83,9 +83,12 @@ src/
   tests, never an exact version.
 - **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsup`, `@types/node`) are fine.
 - **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) is a named constant near its use, not an inline number.
-- **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step, why `codeName` isn't called `name`, why dates stay strings).
+- **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step or why `codeName` isn't called `name`).
 - **Throw on error, always.** Every resource method throws `AdsefidError` subclasses on failure; never introduce a `Result`/`Either` return wrapper. Partial-success bulk/P2P responses are normal typed returns, not errors — that's an API design choice already baked into the response shape.
-- **Datetimes stay strings.** Never introduce a `Date` conversion anywhere in this codebase — see the README's "Dates are plain ISO-8601 strings" section for why. If you're tempted to parse a date field, don't; let the consumer do it.
+- **Datetimes use native `Date` objects.** Serialize request fields explicitly with
+  `Date.toISOString()` and deserialize documented response/webhook fields explicitly. Never use a
+  global key-based JSON reviver: template parameters and untyped error details can reuse those keys.
+  Native `Date` preserves the instant but not the source UTC offset.
 - **Template parameter values.** `TemplateParameterValue`/`TemplateParameters` live once in
   `models/common.ts`; `models/sms.ts` and `models/messenger.ts` both import from there. A `number`
   parameter may legitimately travel as a JSON *string* — that is how leading zeros (`"001234"`) and

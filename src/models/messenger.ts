@@ -17,7 +17,7 @@ export interface SendSingleMessengerRequest {
   profile: string;
   hide?: boolean;
   file_id?: string;
-  send_time?: string;
+  send_time?: Date;
   local_id?: string;
 }
 
@@ -29,7 +29,7 @@ export interface SendSingleMessengerResponse {
   local_id: string | null;
   hide: boolean;
   cost: number;
-  send_time: string;
+  send_time: Date;
   profile: string;
   /** Free-form provider name, e.g. "rubika", "bale". No complete enum documented. */
   messenger: string;
@@ -49,7 +49,7 @@ export interface BulkMessengerReceptorRequest {
 export interface SendBulkMessengerRequest {
   receptors: BulkMessengerReceptorRequest[];
   message: string;
-  send_time?: string;
+  send_time?: Date;
   profile: string;
   file_id?: string;
 }
@@ -67,7 +67,7 @@ export interface SendBulkMessengerResponse {
   group_id: string;
   receptors: BulkMessengerReceptorResult[];
   message: string;
-  send_time: string;
+  send_time: Date;
   total_count: number;
   total_cost: number;
   counts: WebServiceCodeCounts;
@@ -89,7 +89,7 @@ export interface P2pMessengerReceptorRequest {
 /** Request body for `client.messenger.sendP2P` — `POST /v1/messenger/p2p` (doc §5.3): distinct messages per receptor. */
 export interface SendP2pMessengerRequest {
   receptors: P2pMessengerReceptorRequest[];
-  send_time?: string;
+  send_time?: Date;
   profile: string;
   file_id?: string;
 }
@@ -107,7 +107,7 @@ export interface P2pMessengerReceptorResult {
 export interface SendP2pMessengerResponse {
   group_id: string;
   receptors: P2pMessengerReceptorResult[];
-  send_time: string;
+  send_time: Date;
   total_count: number;
   total_cost: number;
   counts: WebServiceCodeCounts;
@@ -166,7 +166,7 @@ export interface SendTemplateMessengerRequest {
   receptor: string;
   local_id?: string;
   profile: string;
-  expiry_date?: string;
+  expiry_date?: Date;
 }
 
 export interface SendTemplateMessengerResponse {
@@ -175,8 +175,8 @@ export interface SendTemplateMessengerResponse {
   status: WebServiceStatus;
   local_id: string | null;
   template_id: string;
-  send_time: string;
-  expiry_date: string | null;
+  send_time: Date;
+  expiry_date: Date | null;
   cost: number;
   receptor: string;
   message: string;
@@ -200,8 +200,8 @@ export interface MessengerStatusReceptor {
   local_id: string | null;
   status: WebServiceStatus;
   receptor: string;
-  send_time: string;
-  delivery_time: string | null;
+  send_time: Date;
+  delivery_time: Date | null;
 }
 
 export interface GetMessengerStatusResponse {

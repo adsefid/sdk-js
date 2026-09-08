@@ -50,9 +50,7 @@ const result = await client.sms.sendTemplate({
   parameters,
   receptor: "09120000000",
   line_number: lineNumber,
-  // Datetimes are plain ISO-8601 strings throughout this SDK; it never builds
-  // a Date for you.
-  expiry_date: new Date(Date.now() + 10 * 60_000).toISOString(),
+  expiry_date: new Date(Date.now() + 10 * 60_000),
 });
 
 console.log(`\nsent ${result.message_id}: status ${result.status}`);

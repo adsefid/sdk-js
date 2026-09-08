@@ -115,6 +115,12 @@ describe("each event type parses to its own shape", () => {
 
     expect(event.type).toBe(expectedType);
     expect(event.data.length).toBeGreaterThan(0);
+    expect(event.occurred_at).toBeInstanceOf(Date);
+    if (event.type === "receive") {
+      expect(event.data[0]?.receive_date).toBeInstanceOf(Date);
+    } else {
+      expect(event.data[0]?.delivery_time).toBeInstanceOf(Date);
+    }
   });
 
   it("types a status delivery code", () => {
@@ -232,6 +238,22 @@ describe("rejections", () => {
 
   it.each(cases)("rejects %s", (_name, call) => {
     expect(call).toThrow(AdsefidWebhookVerificationError);
+  });
+
+  it("rejects an invalid payload datetime", () => {
+    const payload = fixtureJson<Record<string, unknown>>("webhooks/receive.body.json");
+    payload.occurred_at = "not-a-date";
+    const body = Buffer.from(JSON.stringify(payload));
+    const timestamp = nowTimestamp();
+
+    expect(() =>
+      verifyAndParseWebhook({
+        rawBody: body,
+        signatureHeader: sign(VECTOR.secret, timestamp, body),
+        timestampHeader: timestamp,
+        secret: VECTOR.secret,
+      }),
+    ).toThrow(AdsefidWebhookVerificationError);
   });
 
   it.each([
