@@ -74,15 +74,61 @@ describe("error envelope mapping", () => {
     expect(error instanceof AdsefidRateLimitError).toBe(rateLimited);
   });
 
-  it("keeps the endpoint-specific details payload intact", async () => {
+  /**
+   * The real shape of a validation failure: a field-to-message map under
+   * `errors`, with plain string values.
+   */
+  it("keeps a validation details payload intact", async () => {
     const user = userWith(400, fixtureText("errors/error.invalid_parameter.json"));
 
     const caught = (await user.getInfo().catch((err: unknown) => err)) as AdsefidApiError;
 
     expect(caught.details).toEqual({
-      take: ["must be between 1 and 100"],
-      state: ["must be one of pendingapproval, approved, rejected"],
+      errors: {
+        take: "invalid value for take",
+        state: "invalid value for state",
+      },
     });
+  });
+
+  /**
+   * `details` is typed `unknown` precisely because the service uses a different
+   * shape per endpoint. Each real shape must come through uncoerced.
+   */
+  it.each([
+    [
+      "single send is a flat field to message map",
+      "errors/error.details_single.json",
+      { receptor: "invalid value for receptor" },
+    ],
+    [
+      "bulk carries per-item errors keyed by index",
+      "errors/error.details_bulk.json",
+      {
+        errors: { line_number: "invalid value for line_number" },
+        messages: [
+          { index: 0, errors: { receptor: "invalid value for receptor" } },
+          {
+            index: 2,
+            errors: {
+              local_id: "invalid value for local_id",
+              message: "invalid value for message",
+            },
+          },
+        ],
+      },
+    ],
+    [
+      "cancel is the one shape whose values are arrays",
+      "errors/error.details_cancel.json",
+      { local_ids: ["order-10001", "order-10002"] },
+    ],
+  ])("%s", async (_name, fixture, expected) => {
+    const user = userWith(400, fixtureText(fixture as string));
+
+    const caught = (await user.getInfo().catch((err: unknown) => err)) as AdsefidApiError;
+
+    expect(caught.details).toEqual(expected);
   });
 });
 

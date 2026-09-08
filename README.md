@@ -151,6 +151,18 @@ try {
 
 `AdsefidApiError` deliberately does not use a property named `name` for the error's symbolic name (`"DUPLICATE_LOCAL_ID"`, `"INVALID_PARAMETER"`, ...) — that would shadow the inherited `Error.prototype.name` (which stays `"AdsefidApiError"`). Use `err.codeName` instead.
 
+`details` is not one shape — the service picks one per endpoint:
+
+| When | Shape | Example |
+|---|---|---|
+| Request validation (`2024 INVALID_PARAMETER`) | `{"errors": {field: message}}` — snake_case field paths, **string** values | `{"errors":{"take":"invalid value for take"}}` |
+| Single send | `{field: message}` — flat, no wrapper | `{"receptor":"invalid value for receptor"}` |
+| Bulk / P2P | `{"errors": {...}, "messages": [{"index": n, "errors": {...}}]}` — `index` is the position in *your* array, so gaps are normal | `{"errors":{},"messages":[{"index":2,"errors":{"local_id":"invalid value for local_id"}}]}` |
+| Cancel | `{field: [value, ...]}` — the one shape whose values are **arrays** | `{"local_ids":["order-10001"]}` |
+| Anything else | absent or `null` | |
+
+Decode it defensively for the endpoint you called rather than assuming a single shape.
+
 ## Rate limits
 
 The API enforces a default sending limit of 500 units/second, shared across SMS and Messenger traffic (SMS is counted per segment). If you exceed it, you get back:
