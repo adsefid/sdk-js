@@ -82,4 +82,4 @@ jobs:
         run: |
           dist_tag=latest
           [[ "$RELEASE_TAG" == *-* ]] && dist_tag=next
-          npm publish artifacts/*.tgz --access public --provenance --ignore-scripts --tag "$dist_tag"
+          npm publish ./artifacts/*.tgz --access public --provenance --ignore-scripts --tag "$dist_tag"
