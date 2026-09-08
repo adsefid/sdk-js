@@ -41,6 +41,7 @@ export async function sendRequest<TData>(
   const url = buildUrl(config.baseUrl, options.path, options.query);
   const headers: Record<string, string> = {
     "X-API-KEY": config.apiKey,
+    "User-Agent": config.userAgent,
   };
 
   let body: FormData | string | undefined;

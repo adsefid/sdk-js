@@ -70,8 +70,13 @@ const client = new AdsefidClient({
 
   // Per-request timeout in milliseconds (default: 30000)
   timeoutMs: 15_000,
+
+  // Defaults to "adsefid-js/<SDK_VERSION>".
+  userAgent: "my-service/1.0.0",
 });
 ```
+
+Monetary response fields (`cost`, `total_cost`, and `credit_left`) use `number` and may contain fractional values.
 
 ## Dates are plain ISO-8601 strings, not `Date` objects
 
@@ -278,7 +283,7 @@ so don't assume every deployment gets all three; handle whichever ones you've su
 
 This SDK follows Semantic Versioning independently of the API documentation.
 
-- SDK version: **`0.1.0`** (`version` in `package.json`)
+- SDK version: **`0.2.0`** (`version` in `package.json`)
 - Verified API documentation: **`v1.11.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
