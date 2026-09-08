@@ -1,5 +1,10 @@
 import type { LineSelector, WebServiceStatus } from "../enums.js";
-import type { CancelRequest, CancelResponse, WebServiceCodeCounts } from "./common.js";
+import type {
+  CancelRequest,
+  CancelResponse,
+  TemplateParameters,
+  WebServiceCodeCounts,
+} from "./common.js";
 
 // ---------------------------------------------------------------------------
 // 4.1 POST /v1/sms/single
@@ -116,10 +121,8 @@ export interface SendP2pSmsResponse {
 // 4.4 POST /v1/sms/template
 // ---------------------------------------------------------------------------
 
-export type TemplateParameters = Record<string, string | number>;
-
 /** Request body for `client.sms.sendTemplate` — `POST /v1/sms/template` (doc §4.4). */
-export interface SendSmsTemplateRequest {
+export interface SendTemplateSmsRequest {
   template_id: string;
   parameters: TemplateParameters;
   receptor: string;
@@ -130,7 +133,7 @@ export interface SendSmsTemplateRequest {
   expiry_date?: string;
 }
 
-export interface SendSmsTemplateResponse {
+export interface SendTemplateSmsResponse {
   group_id: string;
   message_id: string;
   status: WebServiceStatus;

@@ -31,3 +31,4 @@ jobs:
       - run: npm ci
       - run: make lint
       - run: make build
+      - run: make test

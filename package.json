@@ -1,8 +1,8 @@
 {
   "name": "@adsefid/sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official JavaScript/TypeScript client SDK for the adsefid.com SMS Web Service REST API",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -38,13 +38,15 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
     "@types/node": "18.19.130",
     "tsup": "8.5.1",
     "tsx": "4.23.13",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
   }
 }

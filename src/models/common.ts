@@ -1,6 +1,22 @@
 import type { WebServiceResponseCode, WebServiceStatus } from "../enums.js";
 
 /**
+ * A value bound to one named template parameter.
+ *
+ * The API accepts a JSON string or a JSON number for any parameter. For a
+ * parameter the template declares as `number`, the service substitutes a
+ * numeric *string* verbatim, so pass a string whenever the exact digits
+ * matter: `"001234"` keeps its leading zeros and `"1.50"` its trailing zero,
+ * where the numbers `1234` and `1.5` would not. JavaScript numbers are
+ * IEEE-754 doubles, so a string is also the only exact representation of a
+ * decimal the double type cannot hold.
+ */
+export type TemplateParameterValue = string | number;
+
+/** The `parameters` map sent to, and echoed back by, the template endpoints. */
+export type TemplateParameters = Record<string, TemplateParameterValue>;
+
+/**
  * Successful API response envelope, per doc §2 "Response Envelope".
  */
 export interface SuccessEnvelope<TData> {

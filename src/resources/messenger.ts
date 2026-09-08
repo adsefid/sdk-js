@@ -7,12 +7,12 @@ import type {
   GetMessengerStatusResponse,
   SendBulkMessengerRequest,
   SendBulkMessengerResponse,
-  SendMessengerTemplateRequest,
-  SendMessengerTemplateResponse,
   SendP2pMessengerRequest,
   SendP2pMessengerResponse,
   SendSingleMessengerRequest,
   SendSingleMessengerResponse,
+  SendTemplateMessengerRequest,
+  SendTemplateMessengerResponse,
   UploadMessengerFileResponse,
 } from "../models/messenger.js";
 import { buildFileFormData, type UploadableFile } from "../multipart.js";
@@ -127,15 +127,15 @@ export class MessengerResource {
 
   /** POST /v1/messenger/template — doc §5.6 */
   public async sendTemplate(
-    request: SendMessengerTemplateRequest,
-  ): Promise<SendMessengerTemplateResponse> {
+    request: SendTemplateMessengerRequest,
+  ): Promise<SendTemplateMessengerResponse> {
     assertRequired(request.template_id, "template_id");
     assertRequired(request.parameters, "parameters");
     assertRequired(request.receptor, "receptor");
     assertRequired(request.profile, "profile");
     assertValidLocalId(request.local_id, "local_id");
 
-    return sendRequest<SendMessengerTemplateResponse>(this.config, {
+    return sendRequest<SendTemplateMessengerResponse>(this.config, {
       method: "POST",
       path: "/v1/messenger/template",
       jsonBody: request,

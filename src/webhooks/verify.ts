@@ -10,12 +10,47 @@ const KNOWN_EVENT_TYPES: ReadonlySet<WebhookEvent["type"]> = new Set(
 );
 
 export interface VerifyAndParseWebhookParams {
+  /**
+   * The exact request body as received. Re-serializing or reformatting it
+   * first breaks verification, so prefer the raw `Buffer`.
+   */
   rawBody: string | Buffer;
   signatureHeader: string;
   timestampHeader: string;
-  secret: string;
+  /**
+   * The endpoint's signing secret as shown in your adsefid.com panel, which is
+   * Base64 and is decoded here, or the already-decoded key as a `Uint8Array`.
+   */
+  secret: string | Uint8Array;
   /** Max allowed age of the timestamp header, in seconds. Default `300`. */
   maxAgeSeconds?: number;
+}
+
+/**
+ * Turns the panel's secret into the raw HMAC key.
+ *
+ * A webhook endpoint's secret is 32 random bytes, and the adsefid.com panel
+ * shows it Base64-encoded. The platform signs with those *decoded* bytes, so
+ * the Base64 has to be undone before it is used as a key.
+ */
+function decodeSecret(secret: string | Uint8Array): Buffer {
+  if (typeof secret !== "string") {
+    return Buffer.from(secret);
+  }
+
+  const trimmed = secret.trim();
+  const decoded = Buffer.from(trimmed, "base64");
+  // Buffer.from(..., "base64") silently ignores invalid input, so round-trip
+  // to confirm the secret really was Base64 rather than hand it a wrong key.
+  if (
+    decoded.length === 0 ||
+    decoded.toString("base64").replace(/=+$/, "") !== trimmed.replace(/=+$/, "")
+  ) {
+    throw new AdsefidWebhookVerificationError(
+      "Webhook secret is not valid Base64; use the secret exactly as shown in your adsefid.com panel, or pass the decoded key as a Uint8Array",
+    );
+  }
+  return decoded;
 }
 
 /**
@@ -27,16 +62,11 @@ export function verifyAndParseWebhook(params: VerifyAndParseWebhookParams): Webh
   const { rawBody, signatureHeader, timestampHeader, secret } = params;
   const maxAgeSeconds = params.maxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS;
 
+  const key = decodeSecret(secret);
+
   const timestamp = Number.parseInt(timestampHeader, 10);
   if (!Number.isFinite(timestamp) || String(timestamp) !== timestampHeader.trim()) {
     throw new AdsefidWebhookVerificationError(`Invalid timestamp header: "${timestampHeader}"`);
-  }
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSeconds - timestamp) > maxAgeSeconds) {
-    throw new AdsefidWebhookVerificationError(
-      `Webhook timestamp is stale: ${Math.abs(nowSeconds - timestamp)}s old, max allowed is ${maxAgeSeconds}s`,
-    );
   }
 
   if (!signatureHeader.startsWith(SIGNATURE_PREFIX)) {
@@ -46,11 +76,13 @@ export function verifyAndParseWebhook(params: VerifyAndParseWebhookParams): Webh
   }
   const providedSignature = signatureHeader.slice(SIGNATURE_PREFIX.length);
 
-  const rawBodyString = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
-  const signingInput = `${timestamp}.${rawBodyString}`;
+  const rawBodyBuffer = typeof rawBody === "string" ? Buffer.from(rawBody, "utf8") : rawBody;
+  // Hash the body bytes as they arrived. Decoding to a string and re-encoding
+  // would round-trip through UTF-8 and could change what gets signed.
   // Base64-encoded directly from the raw HMAC digest bytes — no hex step.
-  const expectedSignature = createHmac("sha256", secret)
-    .update(signingInput, "utf8")
+  const expectedSignature = createHmac("sha256", key)
+    .update(Buffer.from(`${timestamp}.`, "utf8"))
+    .update(rawBodyBuffer)
     .digest("base64");
 
   const expectedBuffer = Buffer.from(expectedSignature, "utf8");
@@ -59,13 +91,22 @@ export function verifyAndParseWebhook(params: VerifyAndParseWebhookParams): Webh
     expectedBuffer.length === providedBuffer.length &&
     timingSafeEqual(expectedBuffer, providedBuffer);
 
+  // Signature first, then freshness — the sibling SDKs check in this order, so
+  // the same request reports the same failure everywhere.
   if (!signaturesMatch) {
     throw new AdsefidWebhookVerificationError("Webhook signature mismatch");
   }
 
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSeconds - timestamp) > maxAgeSeconds) {
+    throw new AdsefidWebhookVerificationError(
+      `Webhook timestamp is stale: ${Math.abs(nowSeconds - timestamp)}s old, max allowed is ${maxAgeSeconds}s`,
+    );
+  }
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawBodyString);
+    parsed = JSON.parse(rawBodyBuffer.toString("utf8"));
   } catch (err) {
     throw new AdsefidWebhookVerificationError(
       `Webhook body is not valid JSON: ${(err as Error).message}`,

@@ -13,11 +13,12 @@ import type {
   SendP2pSmsResponse,
   SendSingleSmsRequest,
   SendSingleSmsResponse,
-  SendSmsTemplateRequest,
-  SendSmsTemplateResponse,
+  SendTemplateSmsRequest,
+  SendTemplateSmsResponse,
 } from "../models/sms.js";
 import {
   assertAtLeastOneProvided,
+  assertInRange,
   assertMaxCount,
   assertMaxLength,
   assertNonEmptyArray,
@@ -28,8 +29,9 @@ import {
 
 const SMS_MESSAGE_MAX_LENGTH = 900;
 const MAX_STATUS_IDS = 2000;
-/** Doc §4.7: `count` must be strictly less than this value. */
-const RECEIVE_COUNT_EXCLUSIVE_MAX = 500;
+/** Doc §4.7: the service accepts `count` in [1, 499]. */
+const RECEIVE_COUNT_MIN = 1;
+const RECEIVE_COUNT_MAX = 499;
 
 /** SMS endpoints — accessed via `client.sms`. */
 export class SmsResource {
@@ -87,14 +89,14 @@ export class SmsResource {
   }
 
   /** POST /v1/sms/template — doc §4.4 */
-  public async sendTemplate(request: SendSmsTemplateRequest): Promise<SendSmsTemplateResponse> {
+  public async sendTemplate(request: SendTemplateSmsRequest): Promise<SendTemplateSmsResponse> {
     assertRequired(request.template_id, "template_id");
     assertRequired(request.parameters, "parameters");
     assertRequired(request.receptor, "receptor");
     assertRequired(request.line_number, "line_number");
     assertValidLocalId(request.local_id, "local_id");
 
-    return sendRequest<SendSmsTemplateResponse>(this.config, {
+    return sendRequest<SendTemplateSmsResponse>(this.config, {
       method: "POST",
       path: "/v1/sms/template",
       jsonBody: request,
@@ -139,7 +141,7 @@ export class SmsResource {
   public async getReceived(query: GetReceivedSmsQuery): Promise<GetReceivedSmsResponse> {
     assertRequired(query.line_number, "line_number");
     if (query.count !== undefined) {
-      assertMaxCount(query.count, RECEIVE_COUNT_EXCLUSIVE_MAX - 1, "count");
+      assertInRange(query.count, RECEIVE_COUNT_MIN, RECEIVE_COUNT_MAX, "count");
     }
 
     return sendRequest<GetReceivedSmsResponse>(this.config, {
