@@ -331,7 +331,7 @@ so don't assume every deployment gets all three; handle whichever ones you've su
 This SDK follows Semantic Versioning independently of the API documentation.
 
 - SDK version: **`0.3.0`** (`version` in `package.json`)
-- Verified API documentation: **`v1.11.0`**
+- Verified API documentation: **`v1.12.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
 
