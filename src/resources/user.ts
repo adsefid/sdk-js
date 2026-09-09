@@ -9,10 +9,7 @@ import type {
   GetUserTemplatesQuery,
   GetUserTemplatesResponse,
 } from "../models/user.js";
-import { assertInRange } from "../validation.js";
-
-const TEMPLATES_MIN_TAKE = 1;
-const TEMPLATES_MAX_TAKE = 100;
+import { assertInRange, LIMITS } from "../validation.js";
 
 /** Account/user endpoints — accessed via `client.user`. */
 export class UserResource {
@@ -45,7 +42,7 @@ export class UserResource {
   /** GET /v1/user/templates — doc §6.4 */
   public async getTemplates(query: GetUserTemplatesQuery = {}): Promise<GetUserTemplatesResponse> {
     if (query.take !== undefined) {
-      assertInRange(query.take, TEMPLATES_MIN_TAKE, TEMPLATES_MAX_TAKE, "take");
+      assertInRange(query.take, LIMITS.templatesTakeMin, LIMITS.templatesTakeMax, "take");
     }
     if (query.skip !== undefined) {
       assertInRange(query.skip, 0, Number.MAX_SAFE_INTEGER, "skip");

@@ -2,6 +2,7 @@ import type { WebServiceStatus } from "../enums.js";
 import type {
   CancelRequest,
   CancelResponse,
+  StatusQuery,
   TemplateParameters,
   WebServiceCodeCounts,
 } from "./common.js";
@@ -29,7 +30,7 @@ export interface SendSingleMessengerResponse {
   local_id: string | null;
   hide: boolean;
   cost: number;
-  send_time: Date;
+  send_time: Date | null;
   profile: string;
   /** Free-form provider name, e.g. "rubika", "bale". No complete enum documented. */
   messenger: string;
@@ -67,7 +68,7 @@ export interface SendBulkMessengerResponse {
   group_id: string;
   receptors: BulkMessengerReceptorResult[];
   message: string;
-  send_time: Date;
+  send_time: Date | null;
   total_count: number;
   total_cost: number;
   counts: WebServiceCodeCounts;
@@ -107,7 +108,7 @@ export interface P2pMessengerReceptorResult {
 export interface SendP2pMessengerResponse {
   group_id: string;
   receptors: P2pMessengerReceptorResult[];
-  send_time: Date;
+  send_time: Date | null;
   total_count: number;
   total_cost: number;
   counts: WebServiceCodeCounts;
@@ -175,7 +176,7 @@ export interface SendTemplateMessengerResponse {
   status: WebServiceStatus;
   local_id: string | null;
   template_id: string;
-  send_time: Date;
+  send_time: Date | null;
   expiry_date: Date | null;
   cost: number;
   receptor: string;
@@ -190,17 +191,14 @@ export interface SendTemplateMessengerResponse {
 // ---------------------------------------------------------------------------
 
 /** Query params for `client.messenger.getStatus` — `GET /v1/messenger/status` (doc §5.7). */
-export interface GetMessengerStatusQuery {
-  message_ids?: string[];
-  local_ids?: string[];
-}
+export type GetMessengerStatusQuery = StatusQuery;
 
 export interface MessengerStatusReceptor {
   message_id: string;
   local_id: string | null;
   status: WebServiceStatus;
   receptor: string;
-  send_time: Date;
+  send_time: Date | null;
   delivery_time: Date | null;
 }
 

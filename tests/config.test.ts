@@ -39,6 +39,17 @@ describe("resolveClientOptions", () => {
     },
   );
 
+  it.each(["", "   "])("rejects the blank api key %j before any request", (apiKey) => {
+    expect(() => resolveClientOptions({ apiKey })).toThrow(AdsefidValidationError);
+  });
+
+  it.each(["", "api.test", "/relative", "ftp://api.test", "not a url"])(
+    "rejects the base URL %j",
+    (baseUrl) => {
+      expect(() => resolveClientOptions({ apiKey: "k", baseUrl })).toThrow(AdsefidValidationError);
+    },
+  );
+
   it("keeps a supplied fetch implementation", () => {
     const stub = fetchStub();
     expect(resolveClientOptions({ apiKey: "k", fetchImpl: stub.fetchImpl }).fetchImpl).toBe(

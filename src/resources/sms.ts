@@ -26,13 +26,8 @@ import {
   assertRequired,
   assertValidLocalId,
   joinCsv,
+  LIMITS,
 } from "../validation.js";
-
-const SMS_MESSAGE_MAX_LENGTH = 900;
-const MAX_STATUS_IDS = 2000;
-/** Doc §4.7: the service accepts `count` in [1, 499]. */
-const RECEIVE_COUNT_MIN = 1;
-const RECEIVE_COUNT_MAX = 499;
 
 /** SMS endpoints — accessed via `client.sms`. */
 export class SmsResource {
@@ -43,7 +38,7 @@ export class SmsResource {
     assertRequired(request.receptor, "receptor");
     assertRequired(request.line_number, "line_number");
     assertRequired(request.message, "message");
-    assertMaxLength(request.message, SMS_MESSAGE_MAX_LENGTH, "message");
+    assertMaxLength(request.message, LIMITS.smsMessageMaxLength, "message");
     assertValidLocalId(request.local_id, "local_id");
 
     const response = await sendRequest<Wire<SendSingleSmsResponse>>(this.config, {
@@ -52,14 +47,14 @@ export class SmsResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/bulk — doc §4.2 */
   public async sendBulk(request: SendBulkSmsRequest): Promise<SendBulkSmsResponse> {
     assertNonEmptyArray(request.receptors, "receptors");
     assertRequired(request.message, "message");
-    assertMaxLength(request.message, SMS_MESSAGE_MAX_LENGTH, "message");
+    assertMaxLength(request.message, LIMITS.smsMessageMaxLength, "message");
     assertRequired(request.line_number, "line_number");
     request.receptors.forEach((receptor, index) => {
       assertRequired(receptor.receptor, `receptors[${index}].receptor`);
@@ -72,7 +67,7 @@ export class SmsResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/p2p — doc §4.3 */
@@ -82,7 +77,7 @@ export class SmsResource {
     request.messages.forEach((message, index) => {
       assertRequired(message.receptor, `messages[${index}].receptor`);
       assertRequired(message.message, `messages[${index}].message`);
-      assertMaxLength(message.message, SMS_MESSAGE_MAX_LENGTH, `messages[${index}].message`);
+      assertMaxLength(message.message, LIMITS.smsMessageMaxLength, `messages[${index}].message`);
       assertValidLocalId(message.local_id, `messages[${index}].local_id`);
     });
 
@@ -92,7 +87,7 @@ export class SmsResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/sms/template — doc §4.4 */
@@ -111,7 +106,7 @@ export class SmsResource {
 
     return {
       ...response,
-      send_time: dateFromWire(response.send_time, "send_time"),
+      send_time: nullableDateFromWire(response.send_time, "send_time"),
       expiry_date: nullableDateFromWire(response.expiry_date, "expiry_date"),
     };
   }
@@ -124,7 +119,7 @@ export class SmsResource {
     ]);
     const combinedCount =
       new Set(query.message_ids ?? []).size + new Set(query.local_ids ?? []).size;
-    assertMaxCount(combinedCount, MAX_STATUS_IDS, "message_ids+local_ids");
+    assertMaxCount(combinedCount, LIMITS.combinedStatusIdsMax, "message_ids+local_ids");
 
     const response = await sendRequest<Wire<GetSmsStatusResponse>>(this.config, {
       method: "GET",
@@ -138,7 +133,7 @@ export class SmsResource {
     return {
       receptors: response.receptors.map((receptor) => ({
         ...receptor,
-        send_time: dateFromWire(receptor.send_time, "send_time"),
+        send_time: nullableDateFromWire(receptor.send_time, "send_time"),
         delivery_time: nullableDateFromWire(receptor.delivery_time, "delivery_time"),
       })),
     };
@@ -162,7 +157,7 @@ export class SmsResource {
   public async getReceived(query: GetReceivedSmsQuery): Promise<GetReceivedSmsResponse> {
     assertRequired(query.line_number, "line_number");
     if (query.count !== undefined) {
-      assertInRange(query.count, RECEIVE_COUNT_MIN, RECEIVE_COUNT_MAX, "count");
+      assertInRange(query.count, LIMITS.receiveCountMin, LIMITS.receiveCountMax, "count");
     }
 
     const response = await sendRequest<Wire<GetReceivedSmsResponse>>(this.config, {

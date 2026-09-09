@@ -2,6 +2,7 @@ import type { LineSelector, WebServiceStatus } from "../enums.js";
 import type {
   CancelRequest,
   CancelResponse,
+  StatusQuery,
   TemplateParameters,
   WebServiceCodeCounts,
 } from "./common.js";
@@ -29,7 +30,7 @@ export interface SendSingleSmsResponse {
   line_selector: LineSelector;
   cost: number;
   receptor: string;
-  send_time: Date;
+  send_time: Date | null;
   message_id: string;
   segment_count: number;
   hide: boolean;
@@ -68,7 +69,7 @@ export interface SendBulkSmsResponse {
   receptors: BulkSmsReceptorResult[];
   message: string;
   segment_count: number;
-  send_time: Date;
+  send_time: Date | null;
   line_number: string;
   line_selector: LineSelector;
   counts: WebServiceCodeCounts;
@@ -109,7 +110,7 @@ export interface P2pSmsMessageResult {
 export interface SendP2pSmsResponse {
   group_id: string;
   messages: P2pSmsMessageResult[];
-  send_time: Date;
+  send_time: Date | null;
   line_number: string;
   line_selector: LineSelector;
   total_cost: number;
@@ -139,7 +140,7 @@ export interface SendTemplateSmsResponse {
   local_id: string | null;
   line_number: string;
   template_id: string;
-  send_time: Date;
+  send_time: Date | null;
   expiry_date: Date | null;
   line_selector: LineSelector;
   cost: number;
@@ -154,17 +155,14 @@ export interface SendTemplateSmsResponse {
 // ---------------------------------------------------------------------------
 
 /** Query params for `client.sms.getStatus` — `GET /v1/sms/status` (doc §4.5). */
-export interface GetSmsStatusQuery {
-  message_ids?: string[];
-  local_ids?: string[];
-}
+export type GetSmsStatusQuery = StatusQuery;
 
 export interface SmsStatusReceptor {
   message_id: string;
   local_id: string | null;
   status: WebServiceStatus;
   receptor: string;
-  send_time: Date;
+  send_time: Date | null;
   delivery_time: Date | null;
 }
 

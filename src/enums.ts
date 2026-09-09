@@ -46,6 +46,23 @@ export type WebServiceMessageStatus =
  */
 export type WebServiceStatus = WebServiceMessageStatus | number;
 
+const WEB_SERVICE_MESSAGE_STATUS_MIN = 1000;
+const WEB_SERVICE_RESPONSE_CODE_MIN = 2000;
+const KNOWN_MESSAGE_STATUSES: ReadonlySet<number> = new Set(Object.values(WebServiceMessageStatus));
+
+/**
+ * Whether a per-item `status` (a `WebServiceCode`, doc §3.3) is a message status this
+ * SDK knows: in 1000-1999 and one of the `WebServiceMessageStatus` values. A bulk/P2P
+ * item that was rejected carries a `WebServiceResponseCode` (2000+) there instead.
+ */
+export function isWebServiceMessageStatus(code: number): code is WebServiceMessageStatus {
+  return (
+    code >= WEB_SERVICE_MESSAGE_STATUS_MIN &&
+    code < WEB_SERVICE_RESPONSE_CODE_MIN &&
+    KNOWN_MESSAGE_STATUSES.has(code)
+  );
+}
+
 /**
  * Doc §3.4 — WebServiceResponseCode (2000-2045)
  */
@@ -100,6 +117,17 @@ export const WebServiceResponseCode = {
 
 export type WebServiceResponseCode =
   (typeof WebServiceResponseCode)[keyof typeof WebServiceResponseCode];
+
+const KNOWN_RESPONSE_CODES: ReadonlySet<number> = new Set(Object.values(WebServiceResponseCode));
+
+/**
+ * Whether a per-item `status` (a `WebServiceCode`, doc §3.3) is an error code this SDK
+ * knows: 2000 or above and one of the `WebServiceResponseCode` values, meaning that one
+ * bulk/P2P item was rejected even though the response as a whole succeeded.
+ */
+export function isWebServiceResponseCode(code: number): code is WebServiceResponseCode {
+  return code >= WEB_SERVICE_RESPONSE_CODE_MIN && KNOWN_RESPONSE_CODES.has(code);
+}
 
 /** HTTP status associated with each WebServiceResponseCode, per doc §3.4. */
 export const WebServiceResponseCodeHttpStatus: Record<WebServiceResponseCode, number> = {

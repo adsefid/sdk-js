@@ -1,6 +1,8 @@
 export { AdsefidClient } from "./client.js";
 export type { AdsefidClientOptions } from "./config.js";
 export {
+  isWebServiceMessageStatus,
+  isWebServiceResponseCode,
   LineSelector,
   TemplateParameterType,
   TemplateState,
@@ -90,7 +92,7 @@ export type { UploadMessengerFileParams } from "./resources/messenger.js";
 export { MessengerResource } from "./resources/messenger.js";
 export { SmsResource } from "./resources/sms.js";
 export { UserResource } from "./resources/user.js";
-export { LOCAL_ID_PATTERN } from "./validation.js";
+export { LIMITS, LOCAL_ID_PATTERN } from "./validation.js";
 export type {
   MessengerStatusWebhookEvent,
   ReceiveWebhookEvent,

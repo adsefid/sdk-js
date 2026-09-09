@@ -3,12 +3,12 @@
  *
  * Both endpoints answer HTTP 200 even when some receptors failed, so a call
  * that did not throw still needs its per-item results inspected. `status` on
- * each item is the number the service sent: below 2000 it is a delivery
- * status, 2000 and above it is an error code for that one receptor.
+ * each item is the WebServiceCode the service sent: the isWebServiceMessageStatus
+ * and isWebServiceResponseCode guards tell an accepted item from a rejected one.
  *
  * Run with: npx tsx examples/bulk-and-p2p.ts
  */
-import { AdsefidClient } from "../src/index.js";
+import { AdsefidClient, isWebServiceResponseCode } from "../src/index.js";
 
 const apiKey = process.env.ADSEFID_API_KEY;
 const lineNumber = process.env.ADSEFID_LINE_NUMBER;
@@ -26,7 +26,7 @@ function report(
   messageId: string | null,
 ): void {
   const label = localId ?? "-";
-  if (status >= 2000) {
+  if (isWebServiceResponseCode(status)) {
     console.log(`  ${receptor} (${label}) FAILED with code ${status}`);
     return;
   }

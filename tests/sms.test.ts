@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AdsefidClient } from "../src/client.js";
+import { isWebServiceMessageStatus, isWebServiceResponseCode } from "../src/enums.js";
 import { AdsefidTransportError, AdsefidValidationError } from "../src/errors.js";
 import type { TemplateParameters } from "../src/index.js";
 import { SmsResource } from "../src/resources/sms.js";
@@ -266,7 +267,7 @@ describe("response parsing", () => {
     expect(result.segment_count).toBe(1);
     expect(result.cost).toBe(120);
     expect(result.send_time).toBeInstanceOf(Date);
-    expect(result.send_time.toISOString()).toBe("2026-04-04T07:00:00.000Z");
+    expect(result.send_time?.toISOString()).toBe("2026-04-04T07:00:00.000Z");
   });
 
   it("parses a cancel result", async () => {
@@ -285,6 +286,19 @@ describe("response parsing", () => {
 
     expect(result.messages.length).toBeGreaterThan(0);
     expect(result.messages[0]?.receive_date).toBeInstanceOf(Date);
+  });
+
+  it("keeps a null send_time as null rather than failing the call", async () => {
+    const fixture = fixtureJson<{ data: Record<string, unknown> }>(
+      "envelopes/sms.send_single.success.json",
+    );
+    fixture.data.send_time = null;
+    const stub = fetchStub({ body: JSON.stringify(fixture) });
+    const sms = new SmsResource(testConfig(stub));
+
+    const result = await sms.sendSingle({ receptor: "a", line_number: "3000", message: "m" });
+
+    expect(result.send_time).toBeNull();
   });
 
   it("rejects an invalid datetime in a success response", async () => {
@@ -320,6 +334,13 @@ describe("partial success is not an error", () => {
     expect(result.counts["2025"]).toBe(1);
     expect(result.total_count).toBe(2);
     expect(result.send_time).toBeInstanceOf(Date);
+
+    // The guards split a WebServiceCode by range, so a caller never compares raw ints.
+    const [accepted, rejected] = result.receptors;
+    expect(accepted && isWebServiceMessageStatus(accepted.status)).toBe(true);
+    expect(accepted && isWebServiceResponseCode(accepted.status)).toBe(false);
+    expect(rejected && isWebServiceMessageStatus(rejected.status)).toBe(false);
+    expect(rejected && isWebServiceResponseCode(rejected.status)).toBe(true);
   });
 
   it("returns p2p results with per-message failure codes intact", async () => {

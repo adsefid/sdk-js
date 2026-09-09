@@ -30,7 +30,27 @@ export interface ResolvedAdsefidClientOptions {
   userAgent: string;
 }
 
+function assertAbsoluteHttpUrl(baseUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new AdsefidValidationError("baseUrl must be an absolute http(s) URL", "baseUrl");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new AdsefidValidationError("baseUrl must be an absolute http(s) URL", "baseUrl");
+  }
+}
+
 export function resolveClientOptions(options: AdsefidClientOptions): ResolvedAdsefidClientOptions {
+  // Fail here rather than letting a blank key surface later as a confusing 401
+  // from the service. The sibling SDKs reject it at construction too.
+  if (typeof options.apiKey !== "string" || options.apiKey.trim() === "") {
+    throw new AdsefidValidationError("apiKey is required and must be non-blank", "apiKey");
+  }
+  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  assertAbsoluteHttpUrl(baseUrl);
+
   const userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
   if (userAgent.trim() === "" || /[\r\n]/u.test(userAgent)) {
     throw new AdsefidValidationError(
@@ -41,7 +61,7 @@ export function resolveClientOptions(options: AdsefidClientOptions): ResolvedAds
 
   return {
     apiKey: options.apiKey,
-    baseUrl: (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, ""),
+    baseUrl: baseUrl.replace(/\/+$/, ""),
     fetchImpl: options.fetchImpl ?? fetch,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     userAgent,

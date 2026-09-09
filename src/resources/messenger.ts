@@ -1,5 +1,5 @@
 import type { ResolvedAdsefidClientOptions } from "../config.js";
-import { dateFromWire, dateToWire, nullableDateFromWire, type Wire } from "../dates.js";
+import { dateToWire, nullableDateFromWire, type Wire } from "../dates.js";
 import { sendRequest } from "../http.js";
 import type {
   CancelMessengerRequest,
@@ -25,10 +25,8 @@ import {
   assertRequired,
   assertValidLocalId,
   joinCsv,
+  LIMITS,
 } from "../validation.js";
-
-const MESSENGER_MESSAGE_MAX_LENGTH = 4000;
-const MAX_STATUS_IDS = 2000;
 
 /** Params for `client.messenger.uploadFile` — `POST /v1/messenger/file` (doc §5.4). */
 export interface UploadMessengerFileParams {
@@ -47,7 +45,7 @@ export class MessengerResource {
     request: SendSingleMessengerRequest,
   ): Promise<SendSingleMessengerResponse> {
     assertRequired(request.message, "message");
-    assertMaxLength(request.message, MESSENGER_MESSAGE_MAX_LENGTH, "message");
+    assertMaxLength(request.message, LIMITS.messengerMessageMaxLength, "message");
     assertRequired(request.receptor, "receptor");
     assertRequired(request.profile, "profile");
     assertValidLocalId(request.local_id, "local_id");
@@ -58,14 +56,14 @@ export class MessengerResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/messenger/bulk — doc §5.2 */
   public async sendBulk(request: SendBulkMessengerRequest): Promise<SendBulkMessengerResponse> {
     assertNonEmptyArray(request.receptors, "receptors");
     assertRequired(request.message, "message");
-    assertMaxLength(request.message, MESSENGER_MESSAGE_MAX_LENGTH, "message");
+    assertMaxLength(request.message, LIMITS.messengerMessageMaxLength, "message");
     assertRequired(request.profile, "profile");
     request.receptors.forEach((receptor, index) => {
       assertRequired(receptor.receptor, `receptors[${index}].receptor`);
@@ -78,7 +76,7 @@ export class MessengerResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/messenger/p2p — doc §5.3 */
@@ -90,7 +88,7 @@ export class MessengerResource {
       assertRequired(receptor.message, `receptors[${index}].message`);
       assertMaxLength(
         receptor.message,
-        MESSENGER_MESSAGE_MAX_LENGTH,
+        LIMITS.messengerMessageMaxLength,
         `receptors[${index}].message`,
       );
       assertValidLocalId(receptor.local_id, `receptors[${index}].local_id`);
@@ -102,7 +100,7 @@ export class MessengerResource {
       jsonBody: { ...request, send_time: dateToWire(request.send_time, "send_time") },
     });
 
-    return { ...response, send_time: dateFromWire(response.send_time, "send_time") };
+    return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
   /** POST /v1/messenger/file — doc §5.4 */
@@ -150,7 +148,7 @@ export class MessengerResource {
 
     return {
       ...response,
-      send_time: dateFromWire(response.send_time, "send_time"),
+      send_time: nullableDateFromWire(response.send_time, "send_time"),
       expiry_date: nullableDateFromWire(response.expiry_date, "expiry_date"),
     };
   }
@@ -163,7 +161,7 @@ export class MessengerResource {
     ]);
     const combinedCount =
       new Set(query.message_ids ?? []).size + new Set(query.local_ids ?? []).size;
-    assertMaxCount(combinedCount, MAX_STATUS_IDS, "message_ids+local_ids");
+    assertMaxCount(combinedCount, LIMITS.combinedStatusIdsMax, "message_ids+local_ids");
 
     const response = await sendRequest<Wire<GetMessengerStatusResponse>>(this.config, {
       method: "GET",
@@ -177,7 +175,7 @@ export class MessengerResource {
     return {
       receptors: response.receptors.map((receptor) => ({
         ...receptor,
-        send_time: dateFromWire(receptor.send_time, "send_time"),
+        send_time: nullableDateFromWire(receptor.send_time, "send_time"),
         delivery_time: nullableDateFromWire(receptor.delivery_time, "delivery_time"),
       })),
     };
