@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isWebServiceMessageStatus, isWebServiceResponseCode } from "../src/enums.js";
 import { AdsefidValidationError } from "../src/errors.js";
 import {
   assertAtLeastOneProvided,
@@ -9,6 +10,7 @@ import {
   assertRequired,
   assertValidLocalId,
   joinCsv,
+  LIMITS,
   LOCAL_ID_PATTERN,
 } from "../src/validation.js";
 import { fixtureJson } from "./helpers/fixtures.js";
@@ -101,6 +103,20 @@ describe("the shared limits table", () => {
     expect(limits.receive_count_max).toBe(499);
     expect(limits.templates_take_min).toBe(1);
     expect(limits.templates_take_max).toBe(100);
+  });
+
+  it("is what the exported LIMITS constant enforces", () => {
+    const limits = fixtureJson<Limits>("validation/limits.json");
+
+    expect(LIMITS).toEqual({
+      smsMessageMaxLength: limits.sms_message_max_length,
+      messengerMessageMaxLength: limits.messenger_message_max_length,
+      combinedStatusIdsMax: limits.combined_status_ids_max,
+      receiveCountMin: limits.receive_count_min,
+      receiveCountMax: limits.receive_count_max,
+      templatesTakeMin: limits.templates_take_min,
+      templatesTakeMax: limits.templates_take_max,
+    });
     expect(limits.local_id_max_length).toBe(36);
   });
 });
@@ -172,5 +188,21 @@ describe("joinCsv", () => {
     [["a", "b", "c"], "a,b,c"],
   ])("joins %o to %o", (values, expected) => {
     expect(joinCsv(values as string[] | undefined)).toBe(expected);
+  });
+});
+
+describe("WebServiceCode guards", () => {
+  it.each([
+    [1000, true, false],
+    [1002, true, false],
+    [2025, false, true],
+    [2014, false, true],
+    // Codes this SDK does not know yet match neither guard.
+    [1500, false, false],
+    [2999, false, false],
+    [0, false, false],
+  ])("splits %i by range and known values", (code, isStatus, isError) => {
+    expect(isWebServiceMessageStatus(code)).toBe(isStatus);
+    expect(isWebServiceResponseCode(code)).toBe(isError);
   });
 });

@@ -46,10 +46,11 @@ src/
   config.ts                AdsefidClientOptions type + resolveClientOptions() defaults
   http.ts                  sendRequest(): builds fetch call, applies timeout, parses envelope, throws typed errors
   multipart.ts             buildFileFormData(): Blob/ArrayBuffer/ReadableStream -> FormData with field "file"
-  validation.ts            LOCAL_ID_PATTERN + assert* pre-flight checks + joinCsv()
+  validation.ts            LIMITS (every request bound) + LOCAL_ID_PATTERN + assert* pre-flight checks + joinCsv()
   errors.ts                AdsefidError hierarchy
   enums.ts                 LineSelector, WebServiceMessageStatus, WebServiceResponseCode (+ HTTP status map),
-                            TemplateState, TemplateParameterType, WebServiceStatus — all `as const` objects
+                            TemplateState, TemplateParameterType, WebServiceStatus — all `as const` objects —
+                            plus the isWebServiceMessageStatus/isWebServiceResponseCode guards for per-item status
   resources/sms.ts         SmsResource: sendSingle, sendBulk, sendP2P, sendTemplate, getStatus, cancel, getReceived
   resources/messenger.ts   MessengerResource: sendSingle, sendBulk, sendP2P, uploadFile, cancel, sendTemplate, getStatus
   resources/user.ts        UserResource: getInfo, getLines, getProfiles, getTemplates
@@ -82,7 +83,7 @@ src/
   to define it too or the User-Agent falls back to `0+unknown`. Assert the `adsefid-js/` prefix in
   tests, never an exact version.
 - **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsup`, `@types/node`) are fine.
-- **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) is a named constant near its use, not an inline number.
+- **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) lives in the exported `LIMITS` object in `validation.ts`, never as an inline number.
 - **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step or why `codeName` isn't called `name`).
 - **Throw on error, always.** Every resource method throws `AdsefidError` subclasses on failure; never introduce a `Result`/`Either` return wrapper. Partial-success bulk/P2P responses are normal typed returns, not errors — that's an API design choice already baked into the response shape.
 - **Datetimes use native `Date` objects.** Serialize request fields explicitly with

@@ -2,8 +2,8 @@
  * Base class for every error thrown by this SDK.
  */
 export class AdsefidError extends Error {
-  public constructor(message: string) {
-    super(message);
+  public constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "AdsefidError";
     Object.setPrototypeOf(this, new.target.prototype);
   }
@@ -74,11 +74,8 @@ export class AdsefidRateLimitError extends AdsefidApiError {
  */
 export class AdsefidTransportError extends AdsefidError {
   public constructor(message: string, cause?: unknown) {
-    super(message);
+    super(message, cause === undefined ? undefined : { cause });
     this.name = "AdsefidTransportError";
-    if (cause !== undefined) {
-      this.cause = cause;
-    }
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }

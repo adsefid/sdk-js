@@ -62,7 +62,9 @@ const client = new AdsefidClient({ apiKey });
 const client = new AdsefidClient({
   apiKey: process.env.ADSEFID_API_KEY!,
 
-  // Override the base URL (default: "https://api.adsefid.com")
+  // Override the base URL (default: "https://api.adsefid.com"). Must be an
+  // absolute http(s) URL; a blank apiKey or a bad baseUrl throws
+  // AdsefidValidationError from the constructor, before any request.
   baseUrl: "https://api.adsefid.com",
 
   // Supply a custom fetch implementation (polyfill, proxy-aware fetch, test double, ...)
@@ -84,6 +86,8 @@ Every datetime field in this SDK — `send_time`, `expiry_date`, `receive_date`,
 `since`, `created_at`, `updated_at`, and `occurred_at` — uses a native JavaScript `Date`. Pass
 `Date` objects in requests; responses and verified webhook events return `Date` objects. The SDK
 explicitly serializes request dates with `toISOString()` and parses each documented response field.
+Response fields the service may leave unset (`send_time`, `expiry_date`, `delivery_time`) are typed
+`Date | null`.
 
 `Date` preserves the instant, not the source offset. An API value such as
 `2026-04-04T10:30:00+03:30` becomes the same instant as `2026-04-04T07:00:00.000Z`. Calling
@@ -185,6 +189,13 @@ All enums are plain `as const` objects (not TypeScript `enum`s), each with a der
 - `LineSelector` — `PromotionalSendBased` (0) … `CustomerClubServiceDeliverBased` (5)
 - `WebServiceMessageStatus` — `SCHEDULED` (1000) … `UNKNOWN` (1999)
 - `WebServiceResponseCode` — `INTERNAL_ERROR` (2000) … `REJECTED` (2045), plus `WebServiceResponseCodeHttpStatus` mapping each code to its documented HTTP status
+- `isWebServiceMessageStatus(code)` / `isWebServiceResponseCode(code)` — type guards for a per-item
+  `status` in a bulk/P2P response, which is a `WebServiceCode`: `1000-1999` means the item was
+  accepted, `2000+` means that one item was rejected (e.g. `2025 RECEPTOR_BLACKLISTED`) even
+  though the response as a whole succeeded
+- `LIMITS` — the request bounds the SDK checks before sending (`smsMessageMaxLength`,
+  `messengerMessageMaxLength`, `combinedStatusIdsMax`, `receiveCountMin`/`Max`,
+  `templatesTakeMin`/`Max`)
 - `TemplateState` — `"pendingapproval" | "approved" | "rejected"`
 - `TemplateParameterType` — `"string" | "number"` (the documented complete public set). The live
   service also emits an undocumented third value; such a parameter is dropped from
