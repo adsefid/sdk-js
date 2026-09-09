@@ -7,7 +7,7 @@ Official JavaScript/TypeScript client SDK for the [adsefid.com SMS Web Service](
 
 ## Requirements
 
-- **Node.js 18+**
+- **Node.js 22+**
 - **Server-side only.** This SDK holds your secret `X-API-KEY` and uses Node's built-in `node:crypto` module for webhook signature verification. It is not designed for and must not be used in browser/client-side code — bundling it into a frontend app would expose your API key to anyone who opens dev tools.
 
 ## Install
@@ -354,7 +354,7 @@ SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independent
 
 ## Development
 
-Requires **Node.js 18+**. Development tools are pinned in `package.json`; the published package has
+Requires **Node.js 22+**. Development tools are pinned in `package.json`; the published package has
 zero runtime dependencies.
 
 ```bash
