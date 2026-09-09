@@ -25,7 +25,7 @@ async function toBlob(file: UploadableFile, contentType?: string): Promise<Blob>
     return new Blob([file], contentType ? { type: contentType } : {});
   }
   // ReadableStream<Uint8Array>: buffer it via the Fetch API's Response helper,
-  // which is globally available in Node 18+.
+  // which is globally available in Node 20+.
   const buffered = await new Response(file).blob();
   return contentType ? buffered.slice(0, buffered.size, contentType) : buffered;
 }

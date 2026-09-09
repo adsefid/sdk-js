@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -43,10 +43,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
-    "@types/node": "18.19.130",
+    "@types/node": "20.19.43",
     "tsup": "8.5.1",
     "tsx": "4.23.13",
     "typescript": "5.9.3",
-    "vitest": "2.1.9"
+    "vitest": "4.1.11"
   }
 }
