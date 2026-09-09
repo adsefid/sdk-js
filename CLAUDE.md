@@ -79,10 +79,10 @@ src/
 - **Golden fixtures are shared across all five SDKs.** `tests/fixtures/` is byte-identical to the
   same tree in the sibling repositories. Never edit one in isolation: change it in all five and
   regenerate every `CHECKSUMS.txt`, or `tests/fixtures.test.ts` fails.
-- **`__ADSEFID_SDK_VERSION__` is a build-time define.** tsup injects it, and `vitest.config.ts` has
+- **`__ADSEFID_SDK_VERSION__` is a build-time define.** tsdown injects it, and `vitest.config.ts` has
   to define it too or the User-Agent falls back to `0+unknown`. Assert the `adsefid-js/` prefix in
   tests, never an exact version.
-- **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsup`, `@types/node`) are fine.
+- **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsdown`, `vitest`, `@types/node`) are fine; keep `@types/node` on the same major as the Node floor in `engines`.
 - **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) lives in the exported `LIMITS` object in `validation.ts`, never as an inline number.
 - **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step or why `codeName` isn't called `name`).
 - **Throw on error, always.** Every resource method throws `AdsefidError` subclasses on failure; never introduce a `Result`/`Either` return wrapper. Partial-success bulk/P2P responses are normal typed returns, not errors — that's an API design choice already baked into the response shape.
@@ -105,7 +105,7 @@ src/
 ## Build / typecheck
 
 ```bash
-npm run build        # tsup -> dist/ (ESM + CJS + .d.ts/.d.cts)
+npm run build        # tsdown -> dist/ (ESM + CJS + .d.ts/.d.cts)
 npx tsc --noEmit      # strict typecheck, no emit
 ```
 
