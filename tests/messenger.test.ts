@@ -120,10 +120,10 @@ describe("request building", () => {
 
 describe("partial success is not an error", () => {
   it("returns bulk results with per-receptor failure codes intact", async () => {
-    const { messenger } = resourceFor("envelopes/messenger.send_bulk.partial_success.json");
+    const { messenger, stub } = resourceFor("envelopes/messenger.send_bulk.partial_success.json");
 
     const result = await messenger.sendBulk({
-      receptors: [{ receptor: "a" }, { receptor: "b" }],
+      receptors: [{ receptor: "a" }, { receptor: "", local_id: "-bad" }],
       message: "m",
       profile: "p",
     });
@@ -132,18 +132,23 @@ describe("partial success is not an error", () => {
     expect(result.receptors[1]?.message_id).toBeNull();
     expect(result.counts["2025"]).toBe(1);
     expect(result.send_time).toBeInstanceOf(Date);
+    expect(bodyJson(stub.only()).receptors).toHaveLength(2);
   });
 
   it("returns p2p results with per-receptor failure codes intact", async () => {
-    const { messenger } = resourceFor("envelopes/messenger.send_p2p.partial_success.json");
+    const { messenger, stub } = resourceFor("envelopes/messenger.send_p2p.partial_success.json");
 
     const result = await messenger.sendP2P({
-      receptors: [{ receptor: "a", message: "m" }],
+      receptors: [
+        { receptor: "a", message: "m" },
+        { receptor: "", message: "" },
+      ],
       profile: "p",
     });
 
     expect(result.receptors.map((r) => r.status)).toEqual([1000, 2014]);
     expect(result.send_time).toBeInstanceOf(Date);
+    expect(bodyJson(stub.only()).receptors).toHaveLength(2);
   });
 });
 

@@ -25,7 +25,7 @@ const client = new AdsefidClient({ apiKey: process.env.ADSEFID_API_KEY! });
 
 const result = await client.sms.sendSingle({
   receptor: "98912****567",
-  line_number: "3000xxxx",
+  line_number: "983000XXX",
   message: "سلام، پیام تست",
 });
 
@@ -117,7 +117,7 @@ invalid datetime in a successful API response throws `AdsefidTransportError`.
 | `client.user` | `getProfiles()` | `GET /v1/user/profiles` | |
 | `client.user` | `getTemplates(query?)` | `GET /v1/user/templates` | |
 
-Every method **throws** on a non-success response envelope or a non-2xx HTTP status; a successful call returns the typed response object directly (no `Result`/`Either` wrapper). Bulk and P2P endpoints can return partial success (some receptors accepted, some rejected) — that is a normal typed return value, not a thrown error; inspect each item's `status` field.
+Every method **throws** on a non-success response envelope or a non-2xx HTTP status; a successful call returns the typed response object directly (no `Result`/`Either` wrapper). Bulk and P2P endpoints can return partial success (some receptors accepted, some rejected) — that is a normal typed return value, not a thrown error; inspect each item's `status` field. Item values are sent unchanged so the API can accept or reject them independently; only request-level fields are prevalidated.
 
 ## Error handling
 
@@ -133,7 +133,7 @@ import {
 try {
   await client.sms.sendSingle({
     receptor: "98912****567",
-    line_number: "3000xxxx",
+    line_number: "983000XXX",
     message: "hello",
   });
 } catch (err) {
@@ -142,7 +142,7 @@ try {
   } else if (err instanceof AdsefidApiError) {
     // err.code is a numeric WebServiceResponseCode (e.g. 2007)
     // err.codeName is the SCREAMING_SNAKE name (e.g. "DUPLICATE_LOCAL_ID")
-    // err.details is endpoint-specific and untyped (validation map, item list, etc.)
+    // err.details is ApiErrorDetails: optional field errors and indexed item errors
     console.error(err.code, err.codeName, err.httpStatusCode, err.details);
     if (err.code === WebServiceResponseCode.DUPLICATE_LOCAL_ID) {
       // handle idempotency conflict
@@ -161,17 +161,9 @@ try {
 
 `AdsefidApiError` deliberately does not use a property named `name` for the error's symbolic name (`"DUPLICATE_LOCAL_ID"`, `"INVALID_PARAMETER"`, ...) — that would shadow the inherited `Error.prototype.name` (which stays `"AdsefidApiError"`). Use `err.codeName` instead.
 
-`details` is not one shape — the service picks one per endpoint:
-
-| When | Shape | Example |
-|---|---|---|
-| Request validation (`2024 INVALID_PARAMETER`) | `{"errors": {field: message}}` — snake_case field paths, **string** values | `{"errors":{"take":"invalid value for take"}}` |
-| Single send | `{field: message}` — flat, no wrapper | `{"receptor":"invalid value for receptor"}` |
-| Bulk / P2P | `{"errors": {...}, "messages": [{"index": n, "errors": {...}}]}` — `index` is the position in *your* array, so gaps are normal | `{"errors":{},"messages":[{"index":2,"errors":{"local_id":"invalid value for local_id"}}]}` |
-| Cancel | `{field: [value, ...]}` — the one shape whose values are **arrays** | `{"local_ids":["order-10001"]}` |
-| Anything else | absent or `null` | |
-
-Decode it defensively for the endpoint you called rather than assuming a single shape.
+`err.details` is an optional `ApiErrorDetails`. `errors` maps field names (or rejected cancel IDs)
+to `{ code, name }`; `items` contains `{ index, errors }` entries for rejected bulk/P2P items.
+Both are absent when empty, and numeric codes remain forward-compatible.
 
 ## Rate limits
 
@@ -188,7 +180,7 @@ All enums are plain `as const` objects (not TypeScript `enum`s), each with a der
 
 - `LineSelector` — `PromotionalSendBased` (0) … `CustomerClubServiceDeliverBased` (5)
 - `WebServiceMessageStatus` — `SCHEDULED` (1000) … `UNKNOWN` (1999)
-- `WebServiceResponseCode` — `INTERNAL_ERROR` (2000) … `REJECTED` (2045), plus `WebServiceResponseCodeHttpStatus` mapping each code to its documented HTTP status
+- `WebServiceResponseCode` — `INTERNAL_ERROR` (2000) … `FILE_TOO_LARGE` (2047), plus `WebServiceResponseCodeHttpStatus` mapping each code to its documented HTTP status
 - `isWebServiceMessageStatus(code)` / `isWebServiceResponseCode(code)` — type guards for a per-item
   `status` in a bulk/P2P response, which is a `WebServiceCode`: `1000-1999` means the item was
   accepted, `2000+` means that one item was rejected (e.g. `2025 RECEPTOR_BLACKLISTED`) even
@@ -218,7 +210,7 @@ await client.sms.sendTemplate({
     rate: 19.99,       // a decimal, where double rounding is acceptable
   },
   receptor: "09120000000",
-  line_number: "3000xxxx",
+  line_number: "983000XXX",
 });
 ```
 
@@ -260,7 +252,9 @@ await client.messenger.sendSingle({
 });
 ```
 
-`uploadFile` also accepts a `Blob` or a `ReadableStream<Uint8Array>` directly.
+`uploadFile` also accepts a `Blob` or a `ReadableStream<Uint8Array>` directly. The service enforces
+its documented MIME allowlist and 15 MB limit; oversized uploads return `FILE_TOO_LARGE` (2047,
+HTTP 413).
 
 ## Webhook verification example
 
@@ -348,7 +342,7 @@ so don't assume every deployment gets all three; handle whichever ones you've su
 This SDK follows Semantic Versioning independently of the API documentation.
 
 - SDK version: **`0.6.0`** (`version` in `package.json`)
-- Verified API documentation: **`v1.12.0`**
+- Verified API documentation: **`v1.13.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
 
@@ -376,7 +370,7 @@ Runnable usage samples live in [`examples/`](./examples) (not published to npm �
 
 ```bash
 export ADSEFID_API_KEY=...
-export ADSEFID_LINE_NUMBER=3000xxxx
+export ADSEFID_LINE_NUMBER=983000XXX
 
 npx tsx examples/account.ts            # account info, lines, profiles, templates; client config
 npx tsx examples/quickstart.ts         # send one SMS, with full error triage

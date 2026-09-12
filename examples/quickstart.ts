@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   try {
     const result = await client.sms.sendSingle({
       receptor: "98912****567",
-      line_number: "3000xxxx",
+      line_number: "983000XXX",
       message: "سلام، پیام تست",
     });
 

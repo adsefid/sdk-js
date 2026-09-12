@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isWebServiceMessageStatus, isWebServiceResponseCode } from "../src/enums.js";
+import {
+  isWebServiceMessageStatus,
+  isWebServiceResponseCode,
+  WebServiceResponseCode,
+  WebServiceResponseCodeHttpStatus,
+} from "../src/enums.js";
 import { AdsefidValidationError } from "../src/errors.js";
 import {
   assertAtLeastOneProvided,
@@ -197,6 +202,8 @@ describe("WebServiceCode guards", () => {
     [1002, true, false],
     [2025, false, true],
     [2014, false, true],
+    [2046, false, true],
+    [2047, false, true],
     // Codes this SDK does not know yet match neither guard.
     [1500, false, false],
     [2999, false, false],
@@ -204,5 +211,10 @@ describe("WebServiceCode guards", () => {
   ])("splits %i by range and known values", (code, isStatus, isError) => {
     expect(isWebServiceMessageStatus(code)).toBe(isStatus);
     expect(isWebServiceResponseCode(code)).toBe(isError);
+  });
+
+  it("maps the v1.13 response codes to HTTP statuses", () => {
+    expect(WebServiceResponseCodeHttpStatus[WebServiceResponseCode.INVALID_MESSAGE_IDS]).toBe(400);
+    expect(WebServiceResponseCodeHttpStatus[WebServiceResponseCode.FILE_TOO_LARGE]).toBe(413);
   });
 });

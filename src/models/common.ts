@@ -24,20 +24,32 @@ export interface SuccessEnvelope<TData> {
   data: TData;
 }
 
-/**
- * Error API response envelope, per doc §2 "Response Envelope".
- *
- * `details` is intentionally typed as `unknown`: its shape is
- * endpoint-specific (a validation map keyed by snake_case field path such as
- * `messages[0].local_id`, a bulk item list, a cancel-specific map, or
- * absent entirely).
- */
+/** One field-level API error in an error envelope. */
+export interface ApiFieldError {
+  /** A documented response code, or a newer numeric code unknown to this SDK. */
+  code: WebServiceResponseCode | number;
+  name: string;
+}
+
+/** Errors for one rejected item in a bulk or P2P request. */
+export interface ApiItemError {
+  index: number;
+  errors: Record<string, ApiFieldError>;
+}
+
+/** Structured error details, per doc §2 "Response Envelope". */
+export interface ApiErrorDetails {
+  errors?: Record<string, ApiFieldError>;
+  items?: ApiItemError[];
+}
+
+/** Error API response envelope, per doc §2 "Response Envelope". */
 export interface ErrorEnvelope {
   status: "error";
   error: {
     code: WebServiceResponseCode | number;
     name: string;
-    details?: unknown;
+    details?: ApiErrorDetails;
   };
 }
 
