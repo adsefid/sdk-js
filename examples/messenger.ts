@@ -9,6 +9,7 @@
  * Run with: npx tsx examples/messenger.ts
  */
 import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import { AdsefidClient } from "../src/index.js";
 
 const apiKey = process.env.ADSEFID_API_KEY;
@@ -33,13 +34,13 @@ for (const profile of profiles) {
 // real file gives you a Buffer, whose .buffer is an ArrayBuffer:
 const attachmentPath = process.env.ADSEFID_ATTACHMENT;
 const attachment = attachmentPath
-  ? new Blob([await readFile(attachmentPath)])
-  : new Blob(["Statement for September 2026\nTotal: 1,250,000 IRR\n"]);
+  ? new Blob([await readFile(attachmentPath)], { type: "application/pdf" })
+  : new Blob(["%PDF-1.1\n%%EOF\n"], { type: "application/pdf" });
 
 const uploaded = await client.messenger.uploadFile({
   file: attachment,
-  filename: attachmentPath ?? "statement.txt",
-  contentType: "text/plain",
+  filename: attachmentPath ? basename(attachmentPath) : "statement.pdf",
+  contentType: "application/pdf",
 });
 console.log(`\nuploaded attachment as file_id ${uploaded.file_id}`);
 

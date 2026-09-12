@@ -64,7 +64,7 @@ export function isWebServiceMessageStatus(code: number): code is WebServiceMessa
 }
 
 /**
- * Doc §3.4 — WebServiceResponseCode (2000-2045)
+ * Doc §3.4 — WebServiceResponseCode (2000-2047)
  */
 export const WebServiceResponseCode = {
   INTERNAL_ERROR: 2000,
@@ -113,6 +113,8 @@ export const WebServiceResponseCode = {
   INVALID_FILE: 2043,
   ACCESS_DENIED: 2044,
   REJECTED: 2045,
+  INVALID_MESSAGE_IDS: 2046,
+  FILE_TOO_LARGE: 2047,
 } as const;
 
 export type WebServiceResponseCode =
@@ -177,6 +179,8 @@ export const WebServiceResponseCodeHttpStatus: Record<WebServiceResponseCode, nu
   [WebServiceResponseCode.INVALID_FILE]: 400,
   [WebServiceResponseCode.ACCESS_DENIED]: 403,
   [WebServiceResponseCode.REJECTED]: 400,
+  [WebServiceResponseCode.INVALID_MESSAGE_IDS]: 400,
+  [WebServiceResponseCode.FILE_TOO_LARGE]: 413,
 };
 
 /**

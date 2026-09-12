@@ -74,54 +74,47 @@ describe("error envelope mapping", () => {
     expect(error instanceof AdsefidRateLimitError).toBe(rateLimited);
   });
 
-  /**
-   * The real shape of a validation failure: a field-to-message map under
-   * `errors`, with plain string values.
-   */
-  it("keeps a validation details payload intact", async () => {
+  it("maps field errors to structured details", async () => {
     const user = userWith(400, fixtureText("errors/error.invalid_parameter.json"));
 
     const caught = (await user.getInfo().catch((err: unknown) => err)) as AdsefidApiError;
 
     expect(caught.details).toEqual({
       errors: {
-        take: "invalid value for take",
-        state: "invalid value for state",
+        take: { code: 2024, name: "INVALID_PARAMETER" },
+        state: { code: 2024, name: "INVALID_PARAMETER" },
       },
     });
   });
 
-  /**
-   * `details` is typed `unknown` precisely because the service uses a different
-   * shape per endpoint. Each real shape must come through uncoerced.
-   */
   it.each([
     [
-      "single send is a flat field to message map",
+      "single send field errors",
       "errors/error.details_single.json",
-      { receptor: "invalid value for receptor" },
+      { errors: { receptor: { code: 2014, name: "INVALID_RECEPTOR" } } },
     ],
     [
-      "bulk carries per-item errors keyed by index",
+      "bulk item errors",
       "errors/error.details_bulk.json",
       {
-        errors: { line_number: "invalid value for line_number" },
-        messages: [
-          { index: 0, errors: { receptor: "invalid value for receptor" } },
+        items: [
+          { index: 0, errors: { receptor: { code: 2014, name: "INVALID_RECEPTOR" } } },
           {
             index: 2,
-            errors: {
-              local_id: "invalid value for local_id",
-              message: "invalid value for message",
-            },
+            errors: { local_id: { code: 2007, name: "DUPLICATE_LOCAL_ID" } },
           },
         ],
       },
     ],
     [
-      "cancel is the one shape whose values are arrays",
+      "cancel errors keyed by rejected id",
       "errors/error.details_cancel.json",
-      { local_ids: ["order-10001", "order-10002"] },
+      {
+        errors: {
+          "order-10001": { code: 2029, name: "INVALID_LOCAL_IDS" },
+          "order-10002": { code: 2029, name: "INVALID_LOCAL_IDS" },
+        },
+      },
     ],
   ])("%s", async (_name, fixture, expected) => {
     const user = userWith(400, fixtureText(fixture as string));
@@ -129,6 +122,23 @@ describe("error envelope mapping", () => {
     const caught = (await user.getInfo().catch((err: unknown) => err)) as AdsefidApiError;
 
     expect(caught.details).toEqual(expected);
+  });
+
+  it("preserves an unknown nested response code", async () => {
+    const body = JSON.stringify({
+      status: "error",
+      error: {
+        code: 2024,
+        name: "INVALID_PARAMETER",
+        details: { errors: { future: { code: 2999, name: "FUTURE_CODE" } } },
+      },
+    });
+
+    const caught = (await userWith(400, body)
+      .getInfo()
+      .catch((err: unknown) => err)) as AdsefidApiError;
+
+    expect(caught.details?.errors?.future?.code).toBe(2999);
   });
 });
 

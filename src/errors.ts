@@ -32,14 +32,14 @@ export class AdsefidApiError extends AdsefidError {
   public readonly code: number;
   public readonly codeName: string;
   public readonly httpStatusCode: number;
-  public readonly details: unknown;
+  public readonly details: ApiErrorDetails | undefined;
 
   public constructor(params: {
     message: string;
     code: number;
     codeName: string;
     httpStatusCode: number;
-    details?: unknown;
+    details?: ApiErrorDetails | undefined;
   }) {
     super(params.message);
     this.name = "AdsefidApiError";
@@ -60,7 +60,7 @@ export class AdsefidRateLimitError extends AdsefidApiError {
     code: number;
     codeName: string;
     httpStatusCode: number;
-    details?: unknown;
+    details?: ApiErrorDetails | undefined;
   }) {
     super(params);
     this.name = "AdsefidRateLimitError";
@@ -91,3 +91,5 @@ export class AdsefidWebhookVerificationError extends AdsefidError {
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
+
+import type { ApiErrorDetails } from "./models/common.js";

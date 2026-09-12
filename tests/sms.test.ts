@@ -318,10 +318,10 @@ describe("response parsing", () => {
 
 describe("partial success is not an error", () => {
   it("returns bulk results with per-receptor failure codes intact", async () => {
-    const { sms } = resourceFor("envelopes/sms.send_bulk.partial_success.json");
+    const { sms, stub } = resourceFor("envelopes/sms.send_bulk.partial_success.json");
 
     const result = await sms.sendBulk({
-      receptors: [{ receptor: "a" }, { receptor: "b" }],
+      receptors: [{ receptor: "a" }, { receptor: "", local_id: "-bad" }],
       message: "m",
       line_number: "3000xxxx",
     });
@@ -334,6 +334,10 @@ describe("partial success is not an error", () => {
     expect(result.counts["2025"]).toBe(1);
     expect(result.total_count).toBe(2);
     expect(result.send_time).toBeInstanceOf(Date);
+    expect(bodyJson(stub.only()).receptors).toEqual([
+      { receptor: "a" },
+      { receptor: "", local_id: "-bad" },
+    ]);
 
     // The guards split a WebServiceCode by range, so a caller never compares raw ints.
     const [accepted, rejected] = result.receptors;
@@ -344,15 +348,19 @@ describe("partial success is not an error", () => {
   });
 
   it("returns p2p results with per-message failure codes intact", async () => {
-    const { sms } = resourceFor("envelopes/sms.send_p2p.partial_success.json");
+    const { sms, stub } = resourceFor("envelopes/sms.send_p2p.partial_success.json");
 
     const result = await sms.sendP2P({
-      messages: [{ receptor: "a", message: "x" }],
+      messages: [
+        { receptor: "a", message: "x" },
+        { receptor: "", message: "" },
+      ],
       line_number: "3000xxxx",
     });
 
     expect(result.messages.map((m) => m.status)).toEqual([1000, 2014]);
     expect(result.send_time).toBeInstanceOf(Date);
+    expect(bodyJson(stub.only()).messages).toHaveLength(2);
   });
 });
 

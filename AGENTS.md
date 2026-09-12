@@ -12,7 +12,7 @@ parity there.
 
 The API surface (endpoints, field names, types, validation rules, enums, example payloads,
 webhook behavior) is defined by the published adsefid.com SMS Web Service API documentation.
-This SDK is verified against doc version v1.12.0 (release date 2026-09-08). Before changing any
+This SDK is verified against doc version v1.13.0 (release date 2026-09-12). Before changing any
 endpoint, request/response model, or enum, re-read the relevant documentation. The SDK follows
 independent Semantic Versioning from `package.json`; never copy the API-document version into
 package metadata. Record both versions in the README.
@@ -30,9 +30,11 @@ notes over an ambiguous doc reading:
   some templates; this SDK intentionally models only the two documented values — do not add
   support for it without first confirming it against current, documented API behavior. See
   `src/enums.ts`.
-- `error.details` shape varies per endpoint and is intentionally untyped (`unknown`). It may be
-  a validation map, a bulk/P2P per-item list, a cancel-specific map, or absent entirely — never
-  give it a strong type; decode it defensively per endpoint if you need it.
+- `error.details` uses the shared typed `ApiErrorDetails` shape: optional `errors` maps field names
+  (or rejected cancel IDs) to `{code,name}`, and optional `items` carries indexed bulk/P2P errors.
+  Keep numeric codes forward-compatible.
+- Bulk/P2P item validation happens in the API. Validate request-level fields locally, but send item
+  values unchanged so valid siblings can still succeed.
 
 If you find another such mismatch, prefer the documented/observed live behavior over ambiguous
 doc prose, and leave a comment explaining why the code doesn't match the doc text.
@@ -54,7 +56,7 @@ src/
   resources/sms.ts         SmsResource: sendSingle, sendBulk, sendP2P, sendTemplate, getStatus, cancel, getReceived
   resources/messenger.ts   MessengerResource: sendSingle, sendBulk, sendP2P, uploadFile, cancel, sendTemplate, getStatus
   resources/user.ts        UserResource: getInfo, getLines, getProfiles, getTemplates
-  models/common.ts         ApiEnvelope, CancelRequest/Response, WebServiceCodeCounts, etc.
+  models/common.ts         ApiEnvelope, typed API error details, CancelRequest/Response, WebServiceCodeCounts, etc.
   models/sms.ts            request/response types for all 7 SMS operations
   models/messenger.ts      request/response types for all 7 Messenger operations
   models/user.ts           request/response types for all 4 User operations

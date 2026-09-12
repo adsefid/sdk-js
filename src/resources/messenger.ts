@@ -59,16 +59,12 @@ export class MessengerResource {
     return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
-  /** POST /v1/messenger/bulk — doc §5.2 */
+  /** POST /v1/messenger/bulk — item errors are returned in the partial response (doc §5.2). */
   public async sendBulk(request: SendBulkMessengerRequest): Promise<SendBulkMessengerResponse> {
     assertNonEmptyArray(request.receptors, "receptors");
     assertRequired(request.message, "message");
     assertMaxLength(request.message, LIMITS.messengerMessageMaxLength, "message");
     assertRequired(request.profile, "profile");
-    request.receptors.forEach((receptor, index) => {
-      assertRequired(receptor.receptor, `receptors[${index}].receptor`);
-      assertValidLocalId(receptor.local_id, `receptors[${index}].local_id`);
-    });
 
     const response = await sendRequest<Wire<SendBulkMessengerResponse>>(this.config, {
       method: "POST",
@@ -79,20 +75,10 @@ export class MessengerResource {
     return { ...response, send_time: nullableDateFromWire(response.send_time, "send_time") };
   }
 
-  /** POST /v1/messenger/p2p — doc §5.3 */
+  /** POST /v1/messenger/p2p — item errors are returned in the partial response (doc §5.3). */
   public async sendP2P(request: SendP2pMessengerRequest): Promise<SendP2pMessengerResponse> {
     assertNonEmptyArray(request.receptors, "receptors");
     assertRequired(request.profile, "profile");
-    request.receptors.forEach((receptor, index) => {
-      assertRequired(receptor.receptor, `receptors[${index}].receptor`);
-      assertRequired(receptor.message, `receptors[${index}].message`);
-      assertMaxLength(
-        receptor.message,
-        LIMITS.messengerMessageMaxLength,
-        `receptors[${index}].message`,
-      );
-      assertValidLocalId(receptor.local_id, `receptors[${index}].local_id`);
-    });
 
     const response = await sendRequest<Wire<SendP2pMessengerResponse>>(this.config, {
       method: "POST",

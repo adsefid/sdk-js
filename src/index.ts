@@ -20,6 +20,9 @@ export {
 } from "./errors.js";
 export type {
   ApiEnvelope,
+  ApiErrorDetails,
+  ApiFieldError,
+  ApiItemError,
   CancelledMessage,
   CancelRequest,
   CancelResponse,
