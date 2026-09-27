@@ -42,11 +42,11 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.12",
-    "@types/node": "22.20.1",
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "22.20.4",
     "tsdown": "0.23.0",
-    "tsx": "4.23.13",
+    "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.0"
+    "vitest": "5.0.2"
   }
 }
