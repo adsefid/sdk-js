@@ -71,7 +71,9 @@ src/
 Node.js 22+, Bun 1.2+, and Deno 2.0+ are all first-class. CI runs the whole Vitest suite on each
 (`npm run test:bun`, `npm run test:deno`), smoke-tests the built package on each
 (`tests/runtime/smoke.mjs`, which imports by package name so the `exports` map is exercised), and
-checks the package shape with publint and are-the-types-wrong (`npm run check:package`). Before
+checks the package shape with publint and are-the-types-wrong (`npm run check:package`). The
+Deno 2.0 floor job runs only the smoke test, because Vitest/Vite need a newer Deno than the SDK
+does. Before
 handing off a change, run `make runtimes` and `make check-package`.
 
 - One package, one entry point, Web-standard APIs only: `fetch`, `Request`/`Response`,

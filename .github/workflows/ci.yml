@@ -69,7 +69,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        deno-version: [v2.0.x, v2.x]
+        include:
+          # The documented floor runs the built-package smoke test only: the SDK supports
+          # Deno 2.0, but the test runner (Vitest/Vite) needs node:util APIs added later.
+          - deno-version: v2.0.x
+            full-suite: false
+          - deno-version: v2.x
+            full-suite: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -86,5 +92,6 @@ jobs:
 
       - run: npm ci
       - run: npm run test:deno
+        if: matrix.full-suite
       - run: npm run build
       - run: npm run smoke:deno
