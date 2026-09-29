@@ -5,16 +5,28 @@
 
 Official JavaScript/TypeScript client SDK for the [adsefid.com SMS Web Service](https://adsefid.com) REST API — SMS, Messenger (Rubika/Bale/etc.), and account/user endpoints, plus outgoing webhook signature verification.
 
-## Requirements
+## Runtime support
 
-- **Node.js 22+**
-- **Server-side only.** This SDK holds your secret `X-API-KEY` and uses Node's built-in `node:crypto` module for webhook signature verification. It is not designed for and must not be used in browser/client-side code — bundling it into a frontend app would expose your API key to anyone who opens dev tools.
+| Runtime | Versions | Module formats | Install |
+|---|---|---|---|
+| Node.js | 22+ | ESM and CommonJS | `npm install @adsefid/sdk` |
+| Bun | 1.2+ | ESM and CommonJS | `bun add @adsefid/sdk` |
+| Deno | 2.0+ | ESM (`npm:` specifier) | `deno add npm:@adsefid/sdk` |
+| Edge and sandboxed runtimes | Any with `fetch` and Web Crypto (e.g. Cloudflare Workers) | ESM | your bundler |
 
-## Install
+The package has a single entry point and is built only on Web-standard APIs — `fetch`,
+`FormData`, `Blob`, `ReadableStream`, `AbortController`, `TextEncoder`, and Web Crypto. It uses no
+Node.js built-ins, has zero runtime dependencies, and ships its own type declarations, so it needs
+no `@types/node`. Every supported runtime runs the full test suite and a smoke test of the built
+package in CI.
 
-```bash
-npm install @adsefid/sdk
-```
+In Deno, import `npm:@adsefid/sdk` (or the bare name after `deno add`) and grant network access
+to the API host, for example `deno run --allow-net=api.adsefid.com main.ts`. Add `--allow-env` if
+you read the API key from the environment.
+
+**Server-side only.** This SDK holds your secret `X-API-KEY`. It is not designed for and must not
+be used in browser/client-side code — bundling it into a frontend app would expose your API key to
+anyone who opens dev tools.
 
 ## Quickstart
 
@@ -236,10 +248,8 @@ if (status.receptors[0]?.status === WebServiceMessageStatus.DELIVERED) {
 ```ts
 import { readFile } from "node:fs/promises";
 
-const fileBytes = await readFile("./brochure.pdf");
-
 const { file_id } = await client.messenger.uploadFile({
-  file: fileBytes.buffer.slice(fileBytes.byteOffset, fileBytes.byteOffset + fileBytes.byteLength),
+  file: await readFile("./brochure.pdf"),
   filename: "brochure.pdf",
   contentType: "application/pdf",
 });
@@ -252,13 +262,16 @@ await client.messenger.sendSingle({
 });
 ```
 
-`uploadFile` also accepts a `Blob` or a `ReadableStream<Uint8Array>` directly. The service enforces
+`uploadFile` accepts a `Uint8Array` (so a Node.js `Buffer`, or the bytes from `Bun.file().bytes()`
+or `Deno.readFile()`), a `Blob`, an `ArrayBuffer`, or a `ReadableStream<Uint8Array>`. The service enforces
 its documented MIME allowlist and 15 MB limit; oversized uploads return `FILE_TOO_LARGE` (2047,
 HTTP 413).
 
 ## Webhook verification example
 
-A minimal Express/Node handler that verifies signature + timestamp before touching the payload:
+`verifyAndParseWebhook` is async (it uses Web Crypto). It checks the signature and timestamp
+before touching the payload, and accepts the raw body as a `Uint8Array` (a Node.js `Buffer` is
+one), an `ArrayBuffer`, or a `string`. A minimal Node.js `node:http` handler:
 
 ```ts
 import { createServer } from "node:http";
@@ -274,12 +287,12 @@ const secret = process.env.ADSEFID_WEBHOOK_SECRET!;
 const server = createServer((req, res) => {
   const chunks: Buffer[] = [];
   req.on("data", (chunk) => chunks.push(chunk));
-  req.on("end", () => {
+  req.on("end", async () => {
     const rawBody = Buffer.concat(chunks);
 
     let event;
     try {
-      event = verifyAndParseWebhook({
+      event = await verifyAndParseWebhook({
         rawBody,
         signatureHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.signature] ?? ""),
         timestampHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.timestamp] ?? ""),
@@ -337,6 +350,24 @@ have to type `"x-atlas-webhook-signature"` yourself; `WEBHOOK_EVENT_TYPES` does 
 adsefid.com panel) — an endpoint subscribed only to `receive` will never see a `"status"` event,
 so don't assume every deployment gets all three; handle whichever ones you've subscribed to.
 
+### Fetch-style handlers (Bun, Deno, Workers)
+
+The same function works in any `fetch(request)` handler:
+
+```ts
+import { verifyAndParseWebhook, WEBHOOK_HEADERS_LOWERCASE } from "@adsefid/sdk";
+
+const event = await verifyAndParseWebhook({
+  rawBody: new Uint8Array(await request.arrayBuffer()),
+  signatureHeader: request.headers.get(WEBHOOK_HEADERS_LOWERCASE.signature) ?? "",
+  timestampHeader: request.headers.get(WEBHOOK_HEADERS_LOWERCASE.timestamp) ?? "",
+  secret: env.ADSEFID_WEBHOOK_SECRET,
+});
+```
+
+[`examples/fetch-webhook-server.ts`](./examples/fetch-webhook-server.ts) is a complete receiver
+that runs unchanged with `bun run`, `deno serve`, and on Cloudflare Workers.
+
 ## Versioning
 
 This SDK follows Semantic Versioning independently of the API documentation.
@@ -348,15 +379,21 @@ SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independent
 
 ## Development
 
-Requires **Node.js 22+**. Development tools are pinned in `package.json`; the published package has
-zero runtime dependencies.
+Requires **Node.js 22+**, plus **Bun** and **Deno** for the cross-runtime targets. Development
+tools are pinned in `package.json`; the published package has zero runtime dependencies.
 
 ```bash
 make deps   # npm install
 make fmt    # npm run format  (biome check --write .)
 make lint   # npm run lint    (biome check .) + tsc --noEmit on src and tests
-make build  # npm run build   (tsup — emits ESM, CJS, and .d.ts into dist/)
+make build  # npm run build   (tsdown — emits ESM, CJS, and .d.ts into dist/)
 make test   # npm test        (vitest run)
+
+make test-bun       # the same Vitest suite, executed by Bun
+make test-deno      # the same Vitest suite, executed by Deno
+make smoke          # build, then smoke-test dist/ on Node.js, Bun, and Deno
+make check-package  # build, then publint + are-the-types-wrong on the packed tarball
+make runtimes       # test + test-bun + test-deno + smoke
 ```
 
 `vitest` is a devDependency only; the published package still has zero runtime dependencies. Golden
@@ -380,6 +417,10 @@ npx tsx examples/status-and-cancel.ts  # delivery status, cancelling, inbound me
 npx tsx examples/messenger.ts          # upload an attachment and send it via a messenger profile
 
 ADSEFID_WEBHOOK_SECRET=... npx tsx examples/webhook-server.ts
+
+# Runtime-neutral fetch handler (build first: npm run build)
+ADSEFID_WEBHOOK_SECRET=... bun run examples/fetch-webhook-server.ts
+ADSEFID_WEBHOOK_SECRET=... deno serve --allow-env --allow-read examples/fetch-webhook-server.ts
 ```
 
 `examples/account.ts` sends nothing, so it is the safest one to try first.

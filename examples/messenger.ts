@@ -30,11 +30,11 @@ for (const profile of profiles) {
   console.log(`  ${profile.id} ${profile.name} (${profile.messenger})`);
 }
 
-// uploadFile accepts a Blob, an ArrayBuffer, or a ReadableStream. Reading a
-// real file gives you a Buffer, whose .buffer is an ArrayBuffer:
+// uploadFile accepts a Blob, a Uint8Array (a Buffer from readFile included), an
+// ArrayBuffer, or a ReadableStream:
 const attachmentPath = process.env.ADSEFID_ATTACHMENT;
 const attachment = attachmentPath
-  ? new Blob([await readFile(attachmentPath)], { type: "application/pdf" })
+  ? await readFile(attachmentPath)
   : new Blob(["%PDF-1.1\n%%EOF\n"], { type: "application/pdf" });
 
 const uploaded = await client.messenger.uploadFile({

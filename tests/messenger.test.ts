@@ -191,12 +191,12 @@ describe("file upload", () => {
     it("a Blob", async () => {
       const form = await buildFileFormData({
         file: new Blob(["blob"]),
-        filename: "a.txt",
-        contentType: "text/plain",
+        filename: "a.png",
+        contentType: "image/png",
       });
       const file = form.get("file") as UploadedFile;
       expect(await file.text()).toBe("blob");
-      expect(file.type).toBe("text/plain");
+      expect(file.type).toBe("image/png");
     });
 
     it("an ArrayBuffer", async () => {
@@ -208,6 +208,21 @@ describe("file upload", () => {
       const file = form.get("file") as UploadedFile;
       expect(await file.text()).toBe("buffer");
       expect(file.name).toBe("b.bin");
+    });
+
+    it.each([
+      ["a Uint8Array", new TextEncoder().encode("bytes")],
+      ["a Node.js Buffer", Buffer.from("bytes")],
+      ["a view into a larger buffer", new TextEncoder().encode("__bytes__").subarray(2, -2)],
+    ])("%s, uploading only the viewed bytes", async (_name, bytes) => {
+      const form = await buildFileFormData({
+        file: bytes,
+        filename: "e.png",
+        contentType: "image/png",
+      });
+      const file = form.get("file") as UploadedFile;
+      expect(await file.text()).toBe("bytes");
+      expect(file.type).toBe("image/png");
     });
 
     it("a ReadableStream", async () => {

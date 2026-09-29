@@ -12,7 +12,8 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   target: "es2022",
-  platform: "node",
+  // Web-standard APIs only; the same bundle runs on Node.js, Bun, Deno, and edge runtimes.
+  platform: "neutral",
   // Keep the file names package.json has always published (index.js / index.d.ts for ESM).
   outExtensions: ({ format }) =>
     format === "es" ? { js: ".js", dts: ".d.ts" } : { js: ".cjs", dts: ".d.cts" },

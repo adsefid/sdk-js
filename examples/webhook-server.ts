@@ -29,10 +29,10 @@ function readRawBody(req: IncomingMessage): Promise<Buffer> {
 
 const server = createServer((req, res) => {
   readRawBody(req)
-    .then((rawBody) => {
+    .then(async (rawBody) => {
       let event: WebhookEvent;
       try {
-        event = verifyAndParseWebhook({
+        event = await verifyAndParseWebhook({
           rawBody,
           signatureHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.signature] ?? ""),
           timestampHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.timestamp] ?? ""),
