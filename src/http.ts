@@ -64,33 +64,46 @@ export async function sendRequest<TData>(
     requestInit.body = body;
   }
 
+  // Called detached: invoking it as `config.fetchImpl(...)` would bind `this` to the config
+  // object, which runtimes with a strict `fetch` receiver reject as an illegal invocation.
+  const { fetchImpl } = config;
   let response: Response;
+  let rawText: string;
   try {
-    response = await config.fetchImpl(url, requestInit);
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
+    try {
+      response = await fetchImpl(url, requestInit);
+    } catch (err) {
+      if (isAbort(err)) {
+        throw new AdsefidTransportError(
+          `Request to ${options.path} timed out after ${config.timeoutMs}ms`,
+          err,
+        );
+      }
       throw new AdsefidTransportError(
-        `Request to ${options.path} timed out after ${config.timeoutMs}ms`,
+        `Network request to ${options.path} failed: ${(err as Error).message}`,
         err,
       );
     }
-    throw new AdsefidTransportError(
-      `Network request to ${options.path} failed: ${(err as Error).message}`,
-      err,
-    );
+
+    // The timeout stays armed while the body streams in, so a stalled body is bounded too.
+    try {
+      rawText = await response.text();
+    } catch (err) {
+      if (isAbort(err)) {
+        throw new AdsefidTransportError(
+          `Response body from ${options.path} timed out after ${config.timeoutMs}ms`,
+          err,
+        );
+      }
+      throw new AdsefidTransportError(
+        `Failed to read response body from ${options.path} (HTTP ${response.status})`,
+        err,
+      );
+    }
   } finally {
     clearTimeout(timeoutHandle);
   }
 
-  let rawText: string;
-  try {
-    rawText = await response.text();
-  } catch (err) {
-    throw new AdsefidTransportError(
-      `Failed to read response body from ${options.path} (HTTP ${response.status})`,
-      err,
-    );
-  }
   let parsed: unknown;
   try {
     parsed = rawText.length > 0 ? JSON.parse(rawText) : undefined;
@@ -136,6 +149,10 @@ export async function sendRequest<TData>(
   }
 
   return parsed.data as TData;
+}
+
+function isAbort(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
 }
 
 function isSuccessEnvelope(value: unknown): value is SuccessEnvelope<unknown> {

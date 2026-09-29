@@ -43,7 +43,7 @@ doc prose, and leave a comment explaining why the code doesn't match the doc tex
 
 ```
 src/
-  index.ts                 barrel export — every public symbol comes from here
+  index.ts                 the single barrel export — every public symbol comes from here
   client.ts                AdsefidClient: constructs config, owns .sms/.messenger/.user
   config.ts                AdsefidClientOptions type + resolveClientOptions() defaults
   http.ts                  sendRequest(): builds fetch call, applies timeout, parses envelope, throws typed errors
@@ -60,10 +60,36 @@ src/
   models/sms.ts            request/response types for all 7 SMS operations
   models/messenger.ts      request/response types for all 7 Messenger operations
   models/user.ts           request/response types for all 4 User operations
-  webhooks/verify.ts       verifyAndParseWebhook() — HMAC-SHA256 signature + timestamp check
+  webhooks/parse.ts        header/freshness checks, error messages, and typed payload parsing
+  webhooks/verify.ts       verifyAndParseWebhook() — async, Web Crypto HMAC-SHA256 + timestamp check
   webhooks/events.ts       WebhookEvent union + ReceiveWebhookEvent/StatusWebhookEvent/MessengerStatusWebhookEvent
   webhooks/headers.ts      WEBHOOK_HEADERS/WEBHOOK_HEADERS_LOWERCASE/WEBHOOK_EVENT_TYPES constants — use instead of typing header/type strings
 ```
+
+## Supported runtimes
+
+Node.js 22+, Bun 1.2+, and Deno 2.0+ are all first-class. CI runs the whole Vitest suite on each
+(`npm run test:bun`, `npm run test:deno`), smoke-tests the built package on each
+(`tests/runtime/smoke.mjs`, which imports by package name so the `exports` map is exercised), and
+checks the package shape with publint and are-the-types-wrong (`npm run check:package`). The
+Deno 2.0 floor job runs only the smoke test, because Vitest/Vite need a newer Deno than the SDK
+does. Before
+handing off a change, run `make runtimes` and `make check-package`.
+
+- One package, one entry point, Web-standard APIs only: `fetch`, `Request`/`Response`,
+  `FormData`, `Blob`, `ReadableStream`, `AbortController`, `TextEncoder`/`TextDecoder`,
+  `crypto.subtle`, `atob`/`btoa`, timers. `tsconfig.json` compiles `src/` with `types: []` and the
+  DOM lib, so a Node API does not typecheck; `tests/portability.test.ts` also walks the import
+  graph from `src/index.ts` and rejects `node:` imports, `Buffer`, and `process`. Never add a
+  runtime-specific entry point or subpath export.
+- Never let a Node-only type (`Buffer`, `NodeJS.*`) reach a public signature: consumers on Bun,
+  Deno, and edge runtimes must not need `@types/node`. Accept `Uint8Array`/`ArrayBuffer` instead.
+- Call the configured `fetch` detached, never as a method of another object, and resolve the
+  global `fetch` at call time.
+- Do not assert exact `Blob.type` strings for `text/*` in tests: Bun appends `;charset=utf-8`.
+- `verifyAndParseWebhook` is async because Web Crypto is. The sibling SDKs expose a synchronous
+  function with the same contract (inputs, check order, error cases); that difference is the
+  language idiom, not a parity gap.
 
 ## Adding a new endpoint
 
@@ -84,7 +110,7 @@ src/
 - **`__ADSEFID_SDK_VERSION__` is a build-time define.** tsdown injects it, and `vitest.config.ts` has
   to define it too or the User-Agent falls back to `0+unknown`. Assert the `adsefid-js/` prefix in
   tests, never an exact version.
-- **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and `node:crypto` have covered everything so far. `devDependencies` (`typescript`, `tsdown`, `vitest`, `@types/node`) are fine; keep `@types/node` on the same major as the Node floor in `engines`.
+- **Zero runtime dependencies.** Think hard before adding one — native `fetch`, `FormData`, `Blob`, `ReadableStream`, and Web Crypto have covered everything so far. `devDependencies` (`typescript`, `tsdown`, `vitest`, `@types/node`) are fine; keep `@types/node` on the same major as the Node floor in `engines`.
 - **No magic string/number literals.** A response code, message status, line selector, template state, or parameter type always comes from `enums.ts`. A validation limit (max length, max count, take range, etc.) lives in the exported `LIMITS` object in `validation.ts`, never as an inline number.
 - **No code comments except where a genuinely non-obvious constraint requires one** (e.g. why the webhook signature has no hex step or why `codeName` isn't called `name`).
 - **Throw on error, always.** Every resource method throws `AdsefidError` subclasses on failure; never introduce a `Result`/`Either` return wrapper. Partial-success bulk/P2P responses are normal typed returns, not errors — that's an API design choice already baked into the response shape.

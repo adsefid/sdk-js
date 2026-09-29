@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdsefidClient } from "../src/client.js";
 import {
   DEFAULT_BASE_URL,
@@ -101,5 +101,61 @@ describe("AdsefidClient", () => {
     });
 
     await expect(client.user.getInfo()).rejects.toBeInstanceOf(AdsefidTransportError);
+  });
+});
+
+describe("fetch invocation", () => {
+  const infoBody = fixtureText("envelopes/user.get_info.success.json");
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("resolves the global fetch at call time, not at construction", async () => {
+    const client = new AdsefidClient({ apiKey: "k", baseUrl: TEST_BASE_URL });
+    const lateFetch = vi.fn(async () => new Response(infoBody, { status: 200 }));
+    vi.stubGlobal("fetch", lateFetch);
+
+    await client.user.getInfo();
+
+    expect(lateFetch).toHaveBeenCalledOnce();
+  });
+
+  it("calls a custom fetch without a receiver", async () => {
+    let receiver: unknown = "unset";
+    const client = new AdsefidClient({
+      apiKey: "k",
+      baseUrl: TEST_BASE_URL,
+      fetchImpl: function (this: unknown) {
+        receiver = this;
+        return Promise.resolve(new Response(infoBody, { status: 200 }));
+      } as typeof fetch,
+    });
+
+    await client.user.getInfo();
+
+    expect(receiver).toBeUndefined();
+  });
+
+  it("keeps the timeout armed while the response body streams", async () => {
+    const client = new AdsefidClient({
+      apiKey: "k",
+      baseUrl: TEST_BASE_URL,
+      timeoutMs: 5,
+      fetchImpl: ((_input: unknown, init?: { signal?: AbortSignal }) => {
+        const stalledBody = new ReadableStream<Uint8Array>({
+          start(controller) {
+            init?.signal?.addEventListener("abort", () => {
+              const error = new Error("aborted");
+              error.name = "AbortError";
+              controller.error(error);
+            });
+          },
+        });
+        return Promise.resolve(new Response(stalledBody, { status: 200 }));
+      }) as typeof fetch,
+    });
+
+    await expect(client.user.getInfo()).rejects.toThrow(/Response body .* timed out/);
   });
 });

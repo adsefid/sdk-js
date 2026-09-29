@@ -42,6 +42,11 @@ function assertAbsoluteHttpUrl(baseUrl: string): void {
   }
 }
 
+// Resolved per call rather than captured at construction, so a runtime or test that
+// replaces `globalThis.fetch` later is honoured, and `fetch` is never invoked with a
+// receiver other than the global object.
+const globalFetch: typeof fetch = (input, init) => globalThis.fetch(input, init);
+
 export function resolveClientOptions(options: AdsefidClientOptions): ResolvedAdsefidClientOptions {
   // Fail here rather than letting a blank key surface later as a confusing 401
   // from the service. The sibling SDKs reject it at construction too.
@@ -62,7 +67,7 @@ export function resolveClientOptions(options: AdsefidClientOptions): ResolvedAds
   return {
     apiKey: options.apiKey,
     baseUrl: baseUrl.replace(/\/+$/, ""),
-    fetchImpl: options.fetchImpl ?? fetch,
+    fetchImpl: options.fetchImpl ?? globalFetch,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     userAgent,
   };
