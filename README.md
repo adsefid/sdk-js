@@ -372,7 +372,7 @@ that runs unchanged with `bun run`, `deno serve`, and on Cloudflare Workers.
 
 This SDK follows Semantic Versioning independently of the API documentation.
 
-- SDK version: **`0.8.0`** (`version` in `package.json`)
+- SDK version: **`0.8.1`** (`version` in `package.json`)
 - Verified API documentation: **`v1.13.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
