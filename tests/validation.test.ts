@@ -30,6 +30,7 @@ interface Limits {
   sms_message_max_length: number;
   messenger_message_max_length: number;
   combined_status_ids_max: number;
+  combined_cancel_ids_max: number;
   receive_count_min: number;
   receive_count_max: number;
   templates_take_min: number;
@@ -117,6 +118,7 @@ describe("the shared limits table", () => {
       smsMessageMaxLength: limits.sms_message_max_length,
       messengerMessageMaxLength: limits.messenger_message_max_length,
       combinedStatusIdsMax: limits.combined_status_ids_max,
+      combinedCancelIdsMax: limits.combined_cancel_ids_max,
       receiveCountMin: limits.receive_count_min,
       receiveCountMax: limits.receive_count_max,
       templatesTakeMin: limits.templates_take_min,

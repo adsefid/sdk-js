@@ -20,6 +20,8 @@ export const LIMITS = {
   messengerMessageMaxLength: 4000,
   /** Maximum combined count of distinct `message_ids` + `local_ids` in one status lookup. */
   combinedStatusIdsMax: 2000,
+  /** Maximum distinct cancel IDs across both lists. */
+  combinedCancelIdsMax: 2000,
   /** Smallest accepted `count` for `getReceived`. */
   receiveCountMin: 1,
   /** Largest accepted `count` for `getReceived`. */

@@ -71,7 +71,7 @@ export interface CancelledMessage {
   status: WebServiceStatus;
 }
 
-/** Request body shared by `client.sms.cancel` and `client.messenger.cancel` — at least one of the two fields is required. */
+/** SMS/Messenger cancellation: at least one ID list, at most 2,000 distinct IDs combined. */
 export interface CancelRequest {
   message_ids?: string[];
   local_ids?: string[];
