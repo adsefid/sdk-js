@@ -108,6 +108,9 @@ export class MessengerResource {
       { name: "message_ids", value: request.message_ids },
       { name: "local_ids", value: request.local_ids },
     ]);
+    const combinedCount =
+      new Set(request.message_ids ?? []).size + new Set(request.local_ids ?? []).size;
+    assertMaxCount(combinedCount, LIMITS.combinedCancelIdsMax, "message_ids+local_ids");
 
     return sendRequest<CancelMessengerResponse>(this.config, {
       method: "POST",

@@ -115,13 +115,13 @@ invalid datetime in a successful API response throws `AdsefidTransportError`.
 | `client.sms` | `sendP2P(req)` | `POST /v1/sms/p2p` | Partial success is a normal typed return |
 | `client.sms` | `sendTemplate(req)` | `POST /v1/sms/template` | |
 | `client.sms` | `getStatus(query)` | `GET /v1/sms/status` | |
-| `client.sms` | `cancel(req)` | `POST /v1/sms/cancel` | |
+| `client.sms` | `cancel(req)` | `POST /v1/sms/cancel` | Awaiting approval, queued, or scheduled; no refund; max 2,000 distinct IDs combined |
 | `client.sms` | `getReceived(query)` | `GET /v1/sms/receive` | |
 | `client.messenger` | `sendSingle(req)` | `POST /v1/messenger/single` | |
 | `client.messenger` | `sendBulk(req)` | `POST /v1/messenger/bulk` | Partial success is a normal typed return |
 | `client.messenger` | `sendP2P(req)` | `POST /v1/messenger/p2p` | Partial success is a normal typed return |
 | `client.messenger` | `uploadFile(params)` | `POST /v1/messenger/file` | Accepts `Blob`, `ArrayBuffer`, or `ReadableStream` |
-| `client.messenger` | `cancel(req)` | `POST /v1/messenger/cancel` | |
+| `client.messenger` | `cancel(req)` | `POST /v1/messenger/cancel` | Awaiting approval, queued, or scheduled; no refund; max 2,000 distinct IDs combined |
 | `client.messenger` | `sendTemplate(req)` | `POST /v1/messenger/template` | |
 | `client.messenger` | `getStatus(query)` | `GET /v1/messenger/status` | |
 | `client.user` | `getInfo()` | `GET /v1/user/info` | |
@@ -198,7 +198,7 @@ All enums are plain `as const` objects (not TypeScript `enum`s), each with a der
   accepted, `2000+` means that one item was rejected (e.g. `2025 RECEPTOR_BLACKLISTED`) even
   though the response as a whole succeeded
 - `LIMITS` — the request bounds the SDK checks before sending (`smsMessageMaxLength`,
-  `messengerMessageMaxLength`, `combinedStatusIdsMax`, `receiveCountMin`/`Max`,
+  `messengerMessageMaxLength`, `combinedStatusIdsMax`, `combinedCancelIdsMax`, `receiveCountMin`/`Max`,
   `templatesTakeMin`/`Max`)
 - `TemplateState` — `"pendingapproval" | "approved" | "rejected"`
 - `TemplateParameterType` — `"string" | "number"` (the documented complete public set). The live
@@ -373,7 +373,7 @@ that runs unchanged with `bun run`, `deno serve`, and on Cloudflare Workers.
 This SDK follows Semantic Versioning independently of the API documentation.
 
 - SDK version: **`0.8.1`** (`version` in `package.json`)
-- Verified API documentation: **`v1.13.0`**
+- Verified API documentation: **`v1.14.0`**
 
 SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
 
