@@ -1,6 +1,6 @@
 {
   "name": "@adsefid/sdk",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Official JavaScript/TypeScript client SDK for the adsefid.com SMS Web Service REST API",
   "license": "MIT",
   "keywords": [
