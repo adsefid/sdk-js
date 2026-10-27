@@ -9,10 +9,13 @@
  *
  * Run with: npx tsx examples/templates.ts
  */
-import { AdsefidClient, type TemplateParameters } from "../src/index.js";
+import { AdsefidClient, LineSelector, type TemplateParameters } from "../src/index.js";
 
 const apiKey = process.env.ADSEFID_API_KEY;
 const lineNumber = process.env.ADSEFID_LINE_NUMBER;
+const lineSelector = process.env.ADSEFID_LINE_SELECTOR
+  ? LineSelector[process.env.ADSEFID_LINE_SELECTOR as keyof typeof LineSelector] // needed when the number has several lines
+  : undefined;
 if (!apiKey || !lineNumber) {
   console.error("set ADSEFID_API_KEY and ADSEFID_LINE_NUMBER");
   process.exit(1);
@@ -50,6 +53,7 @@ const result = await client.sms.sendTemplate({
   parameters,
   receptor: "09120000000",
   line_number: lineNumber,
+  ...(lineSelector === undefined ? {} : { line_selector: lineSelector }),
   expiry_date: new Date(Date.now() + 10 * 60_000),
 });
 

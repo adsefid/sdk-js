@@ -419,9 +419,12 @@ describe("validation rejects before any request is sent", () => {
 
   it("counts distinct ids against the 2000 ceiling", async () => {
     const atLimit = Array.from({ length: 2000 }, (_, i) => `id-${i}`);
+    // 2000 distinct ids pass the count check but cannot fit in a GET URL.
     const ok = fetchStub({ body: fixtureText("envelopes/sms.get_status.success.json") });
-    await new SmsResource(testConfig(ok)).getStatus({ message_ids: atLimit });
-    expect(ok.calls).toHaveLength(1);
+    await expect(
+      new SmsResource(testConfig(ok)).getStatus({ message_ids: atLimit }),
+    ).rejects.toThrow(/characters long/);
+    expect(ok.calls).toHaveLength(0);
 
     const tooMany = fetchStub({ body: fixtureText("envelopes/sms.get_status.success.json") });
     await expect(
@@ -450,5 +453,43 @@ describe("the client wires up the sms resource", () => {
     await client.sms.sendSingle({ receptor: "a", line_number: "3000", message: "m" });
 
     expect(stub.only().url).toBe(`${TEST_BASE_URL}/v1/sms/single`);
+  });
+});
+
+describe("status lookup URLs", () => {
+  const ids = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, index) => `0195ff8c-55aa-7e74-a337-${String(index).padStart(12, "0")}`,
+    );
+
+  it.each([
+    [210, true],
+    [230, false],
+    [2000, false],
+  ])("%i ids -> accepted: %s", async (count, accepted) => {
+    const stub = fetchStub({ body: '{"status":"success","data":{"receptors":[]}}' });
+    const sms = new SmsResource(testConfig(stub));
+
+    const call = sms.getStatus({ message_ids: ids(count) });
+
+    if (accepted) {
+      await call;
+      const url = stub.only().url;
+      expect(url).not.toContain("%2C");
+      expect(url).toContain(",");
+      return;
+    }
+    await expect(call).rejects.toBeInstanceOf(AdsefidValidationError);
+    expect(stub.calls).toHaveLength(0);
+  });
+
+  it("drops duplicate ids and keeps a base URL path", async () => {
+    const stub = fetchStub({ body: '{"status":"success","data":{"receptors":[]}}' });
+    const sms = new SmsResource(testConfig(stub, { baseUrl: "https://api.test/webservice/api/" }));
+
+    await sms.getStatus({ local_ids: ["a", "b", "a"] });
+
+    expect(stub.only().url).toBe("https://api.test/webservice/api/v1/sms/status?local_ids=a,b");
   });
 });

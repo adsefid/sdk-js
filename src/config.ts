@@ -64,11 +64,16 @@ export function resolveClientOptions(options: AdsefidClientOptions): ResolvedAds
     );
   }
 
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new AdsefidValidationError("timeoutMs must be a positive, finite number", "timeoutMs");
+  }
+
   return {
     apiKey: options.apiKey,
     baseUrl: baseUrl.replace(/\/+$/, ""),
     fetchImpl: options.fetchImpl ?? globalFetch,
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs,
     userAgent,
   };
 }

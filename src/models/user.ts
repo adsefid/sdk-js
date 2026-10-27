@@ -6,10 +6,10 @@ import type { LineSelector, TemplateParameterType, TemplateState } from "../enum
 
 export interface GetUserInfoResponse {
   name: string;
-  company_name: string;
+  company_name: string | null;
   credit_left: number;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   /** Free-form account status, e.g. "active". No complete enum documented. */
   account_status: string;
 }

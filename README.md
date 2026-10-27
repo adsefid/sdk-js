@@ -3,247 +3,139 @@
 [![CI](https://github.com/adsefid/sdk-js/actions/workflows/ci.yml/badge.svg)](https://github.com/adsefid/sdk-js/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40adsefid%2Fsdk.svg)](https://www.npmjs.com/package/@adsefid/sdk)
 
-Official JavaScript/TypeScript client SDK for the [adsefid.com SMS Web Service](https://adsefid.com) REST API — SMS, Messenger (Rubika/Bale/etc.), and account/user endpoints, plus outgoing webhook signature verification.
+A JavaScript and TypeScript client for the [adsefid.com](https://adsefid.com) SMS Web Service
+API. It sends SMS and Messenger messages (single, bulk, P2P and template), checks delivery status,
+cancels unsent messages, reads inbound SMS, looks up account data, and verifies signed webhooks.
 
-## Runtime support
+It is built only on Web-standard APIs (`fetch`, `FormData`, `Blob`, `AbortController`, Web
+Crypto), has no runtime dependencies, and ships its own types. It is verified against API
+documentation **v1.14.0**. Sibling SDKs exist for .NET, Go, PHP and Python with the same shape.
 
-| Runtime | Versions | Module formats | Install |
-|---|---|---|---|
-| Node.js | 22+ | ESM and CommonJS | `npm install @adsefid/sdk` |
-| Bun | 1.2+ | ESM and CommonJS | `bun add @adsefid/sdk` |
-| Deno | 2.0+ | ESM (`npm:` specifier) | `deno add npm:@adsefid/sdk` |
-| Edge and sandboxed runtimes | Any with `fetch` and Web Crypto (e.g. Cloudflare Workers) | ESM | your bundler |
+**Server-side only.** The SDK holds your secret API key. Never bundle it into browser code.
 
-The package has a single entry point and is built only on Web-standard APIs — `fetch`,
-`FormData`, `Blob`, `ReadableStream`, `AbortController`, `TextEncoder`, and Web Crypto. It uses no
-Node.js built-ins, has zero runtime dependencies, and ships its own type declarations, so it needs
-no `@types/node`. Every supported runtime runs the full test suite and a smoke test of the built
-package in CI.
+## Install
 
-In Deno, import `npm:@adsefid/sdk` (or the bare name after `deno add`) and grant network access
-to the API host, for example `deno run --allow-net=api.adsefid.com main.ts`. Add `--allow-env` if
-you read the API key from the environment.
+| Runtime | Version | Install |
+|---|---|---|
+| Node.js | 22+ | `npm install @adsefid/sdk` |
+| Bun | 1.2+ | `bun add @adsefid/sdk` |
+| Deno | 2.0+ | `deno add npm:@adsefid/sdk` (run with `--allow-net=api.adsefid.com`) |
+| Edge runtimes | any with `fetch` and Web Crypto, such as Cloudflare Workers | your bundler |
 
-**Server-side only.** This SDK holds your secret `X-API-KEY`. It is not designed for and must not
-be used in browser/client-side code — bundling it into a frontend app would expose your API key to
-anyone who opens dev tools.
+Both ESM and CommonJS work (`require("@adsefid/sdk")`), with matching type declarations.
 
 ## Quickstart
 
 ```ts
-import { AdsefidClient } from "@adsefid/sdk";
+import { AdsefidClient, LineSelector } from "@adsefid/sdk";
 
 const client = new AdsefidClient({ apiKey: process.env.ADSEFID_API_KEY! });
 
 const result = await client.sms.sendSingle({
-  receptor: "98912****567",
-  line_number: "983000XXX",
+  receptor: "989120000000",
+  line_number: "983000",
+  line_selector: LineSelector.BulkServiceSendBased,
   message: "سلام، پیام تست",
 });
 
 console.log(result.message_id, result.status);
 ```
 
-The package also works from plain CommonJS:
+The SDK never reads environment variables. Pass the API key yourself. It goes out as the
+`X-API-KEY` header on every request. Create one client and reuse it.
 
-```js
-const { AdsefidClient } = require("@adsefid/sdk");
-```
-
-Both module formats ship matching declaration files, so TypeScript and JavaScript editors resolve
-the same public API automatically.
-
-## Auth setup
-
-The SDK never reads environment variables itself — there is no implicit env magic. Read `ADSEFID_API_KEY` (or whatever name you choose) yourself and pass it explicitly:
-
-```ts
-import { AdsefidClient } from "@adsefid/sdk";
-
-const apiKey = process.env.ADSEFID_API_KEY;
-if (!apiKey) {
-  throw new Error("ADSEFID_API_KEY is not set");
-}
-
-const client = new AdsefidClient({ apiKey });
-```
+**Line selector.** An account can own several lines with the same number, each with its own
+selector (see `client.user.getLines()`). When it does, `line_selector` is required on every SMS
+send; without it the service answers `LINE_NOT_FOUND`.
 
 ## Configuration
 
 ```ts
 const client = new AdsefidClient({
-  apiKey: process.env.ADSEFID_API_KEY!,
-
-  // Override the base URL (default: "https://api.adsefid.com"). Must be an
-  // absolute http(s) URL; a blank apiKey or a bad baseUrl throws
-  // AdsefidValidationError from the constructor, before any request.
-  baseUrl: "https://api.adsefid.com",
-
-  // Supply a custom fetch implementation (polyfill, proxy-aware fetch, test double, ...)
-  fetchImpl: fetch,
-
-  // Per-request timeout in milliseconds (default: 30000)
-  timeoutMs: 15_000,
-
-  // Defaults to "adsefid-js/<SDK_VERSION>".
-  userAgent: "my-service/1.0.0",
+  apiKey,
+  baseUrl: "https://api.adsefid.com", // default; must be an absolute http(s) URL
+  timeoutMs: 15_000,                  // positive and finite; default 30000
+  userAgent: "my-service/1.0.0",      // default: adsefid-js/<SDK_VERSION>
+  fetchImpl: fetch,                   // custom fetch: proxy, polyfill, test double
 });
 ```
 
-Monetary response fields (`cost`, `total_cost`, and `credit_left`) use `number` and may contain fractional values.
+The constructor throws `AdsefidValidationError` for a blank key, a bad URL or a bad timeout.
 
-## Dates use native `Date` objects
-
-Every datetime field in this SDK — `send_time`, `expiry_date`, `receive_date`, `delivery_time`,
-`since`, `created_at`, `updated_at`, and `occurred_at` — uses a native JavaScript `Date`. Pass
-`Date` objects in requests; responses and verified webhook events return `Date` objects. The SDK
-explicitly serializes request dates with `toISOString()` and parses each documented response field.
-Response fields the service may leave unset (`send_time`, `expiry_date`, `delivery_time`) are typed
-`Date | null`.
-
-`Date` preserves the instant, not the source offset. An API value such as
-`2026-04-04T10:30:00+03:30` becomes the same instant as `2026-04-04T07:00:00.000Z`. Calling
-`toISOString()` therefore returns UTC. Invalid request dates throw `AdsefidValidationError`; an
-invalid datetime in a successful API response throws `AdsefidTransportError`.
-
-## Resource reference
-
-| Resource | SDK method | HTTP endpoint | Notes |
-|---|---|---|---|
-| `client.sms` | `sendSingle(req)` | `POST /v1/sms/single` | |
-| `client.sms` | `sendBulk(req)` | `POST /v1/sms/bulk` | Partial success is a normal typed return |
-| `client.sms` | `sendP2P(req)` | `POST /v1/sms/p2p` | Partial success is a normal typed return |
-| `client.sms` | `sendTemplate(req)` | `POST /v1/sms/template` | |
-| `client.sms` | `getStatus(query)` | `GET /v1/sms/status` | |
-| `client.sms` | `cancel(req)` | `POST /v1/sms/cancel` | Awaiting approval, queued, or scheduled; no refund; max 2,000 distinct IDs combined |
-| `client.sms` | `getReceived(query)` | `GET /v1/sms/receive` | |
-| `client.messenger` | `sendSingle(req)` | `POST /v1/messenger/single` | |
-| `client.messenger` | `sendBulk(req)` | `POST /v1/messenger/bulk` | Partial success is a normal typed return |
-| `client.messenger` | `sendP2P(req)` | `POST /v1/messenger/p2p` | Partial success is a normal typed return |
-| `client.messenger` | `uploadFile(params)` | `POST /v1/messenger/file` | Accepts `Blob`, `ArrayBuffer`, or `ReadableStream` |
-| `client.messenger` | `cancel(req)` | `POST /v1/messenger/cancel` | Awaiting approval, queued, or scheduled; no refund; max 2,000 distinct IDs combined |
-| `client.messenger` | `sendTemplate(req)` | `POST /v1/messenger/template` | |
-| `client.messenger` | `getStatus(query)` | `GET /v1/messenger/status` | |
-| `client.user` | `getInfo()` | `GET /v1/user/info` | |
-| `client.user` | `getLines()` | `GET /v1/user/lines` | |
-| `client.user` | `getProfiles()` | `GET /v1/user/profiles` | |
-| `client.user` | `getTemplates(query?)` | `GET /v1/user/templates` | |
-
-Every method **throws** on a non-success response envelope or a non-2xx HTTP status; a successful call returns the typed response object directly (no `Result`/`Either` wrapper). Bulk and P2P endpoints can return partial success (some receptors accepted, some rejected) — that is a normal typed return value, not a thrown error; inspect each item's `status` field. Item values are sent unchanged so the API can accept or reject them independently; only request-level fields are prevalidated.
-
-## Error handling
+To cancel one call, pass `{ signal }` as the last argument of any method. Aborting rejects with
+an `AdsefidTransportError`, and `timeoutMs` still applies:
 
 ```ts
-import {
-  AdsefidApiError,
-  AdsefidRateLimitError,
-  AdsefidTransportError,
-  AdsefidValidationError,
-  WebServiceResponseCode,
-} from "@adsefid/sdk";
+const controller = new AbortController();
+const info = await client.user.getInfo({ signal: controller.signal });
+```
 
-try {
-  await client.sms.sendSingle({
-    receptor: "98912****567",
-    line_number: "983000XXX",
-    message: "hello",
-  });
-} catch (err) {
-  if (err instanceof AdsefidRateLimitError) {
-    console.warn("Rate limited:", err.codeName, err.details);
-  } else if (err instanceof AdsefidApiError) {
-    // err.code is a numeric WebServiceResponseCode (e.g. 2007)
-    // err.codeName is the SCREAMING_SNAKE name (e.g. "DUPLICATE_LOCAL_ID")
-    // err.details is ApiErrorDetails: optional field errors and indexed item errors
-    console.error(err.code, err.codeName, err.httpStatusCode, err.details);
-    if (err.code === WebServiceResponseCode.DUPLICATE_LOCAL_ID) {
-      // handle idempotency conflict
-    }
-  } else if (err instanceof AdsefidValidationError) {
-    // Thrown client-side, before any request was sent (e.g. bad local_id format)
-    console.error("Invalid request:", err.message, err.field);
-  } else if (err instanceof AdsefidTransportError) {
-    // Network failure, timeout, or unparsable response
-    console.error("Transport failure:", err.message, err.cause);
+### Dates and money
+
+Every datetime field is a native `Date`: pass `Date` objects in, and get `Date` objects out
+(`Date | null` where the service may leave a value unset). A `Date` keeps the instant but not the
+source UTC offset. An invalid request date throws `AdsefidValidationError`.
+
+Money fields (`cost`, `total_cost`, `credit_left`) are JavaScript numbers (IEEE-754 doubles), so
+very long fractions can lose precision. Round for display.
+
+## Methods
+
+| Resource | Methods | Endpoint |
+|---|---|---|
+| `client.sms` | `sendSingle`, `sendBulk`, `sendP2P`, `sendTemplate` | `POST /v1/sms/{single,bulk,p2p,template}` |
+| `client.sms` | `getStatus`, `cancel`, `getReceived` | `GET /v1/sms/status`, `POST /v1/sms/cancel`, `GET /v1/sms/receive` |
+| `client.messenger` | `sendSingle`, `sendBulk`, `sendP2P`, `sendTemplate` | `POST /v1/messenger/{single,bulk,p2p,template}` |
+| `client.messenger` | `uploadFile({ file, filename, contentType })` | `POST /v1/messenger/file` |
+| `client.messenger` | `getStatus`, `cancel` | `GET /v1/messenger/status`, `POST /v1/messenger/cancel` |
+| `client.user` | `getInfo`, `getLines`, `getProfiles`, `getTemplates(query?)` | `GET /v1/user/{info,lines,profiles,templates}` |
+
+Field names are snake_case, exactly as in the API. Cancel accepts messages that are awaiting
+approval, queued or scheduled, with no refund, and at most 2,000 distinct IDs across both lists.
+Status lookups are GET requests, so the URL caps them at about 200 IDs per call. The SDK raises a validation error past 8,000 URL characters instead of letting the gateway answer HTTP 414.
+
+## Bulk and P2P: partial success is not an error
+
+A bulk or P2P call resolves normally even when some items are rejected. Each item's `status` is
+either a message status (1000 to 1999) or an error code (2000 and up). Two guards tell them apart:
+
+```ts
+import { isWebServiceResponseCode } from "@adsefid/sdk";
+
+for (const item of result.receptors) {
+  if (isWebServiceResponseCode(item.status)) {
+    console.log(item.receptor, "rejected with code", item.status);
   } else {
-    throw err;
+    console.log(item.receptor, "accepted as", item.message_id);
   }
 }
 ```
 
-`AdsefidApiError` deliberately does not use a property named `name` for the error's symbolic name (`"DUPLICATE_LOCAL_ID"`, `"INVALID_PARAMETER"`, ...) — that would shadow the inherited `Error.prototype.name` (which stays `"AdsefidApiError"`). Use `err.codeName` instead.
+Item values reach the API unchanged, so valid items still go out. If every item is rejected, the
+call rejects with an `AdsefidApiError` whose `details.items` lists each rejected index. Only
+request-level fields are checked locally.
 
-`err.details` is an optional `ApiErrorDetails`. `errors` maps field names (or rejected cancel IDs)
-to `{ code, name }`; `items` contains `{ index, errors }` entries for rejected bulk/P2P items.
-Both are absent when empty, and numeric codes remain forward-compatible.
+## Template parameters
 
-## Rate limits
-
-The API enforces a default sending limit of 500 units/second, shared across SMS and Messenger traffic (SMS is counted per segment). If you exceed it, you get back:
-
-- `2035 MESSAGE_LIMIT_REACHED`
-- `2036 REQUEST_LIMIT_REACHED`
-
-Both surface as `AdsefidRateLimitError` (a subclass of `AdsefidApiError`).
-
-## Enum reference
-
-All enums are plain `as const` objects (not TypeScript `enum`s), each with a derived union type of the same name:
-
-- `LineSelector` — `PromotionalSendBased` (0) … `CustomerClubServiceDeliverBased` (5)
-- `WebServiceMessageStatus` — `SCHEDULED` (1000) … `UNKNOWN` (1999)
-- `WebServiceResponseCode` — `INTERNAL_ERROR` (2000) … `FILE_TOO_LARGE` (2047), plus `WebServiceResponseCodeHttpStatus` mapping each code to its documented HTTP status
-- `isWebServiceMessageStatus(code)` / `isWebServiceResponseCode(code)` — type guards for a per-item
-  `status` in a bulk/P2P response, which is a `WebServiceCode`: `1000-1999` means the item was
-  accepted, `2000+` means that one item was rejected (e.g. `2025 RECEPTOR_BLACKLISTED`) even
-  though the response as a whole succeeded
-- `LIMITS` — the request bounds the SDK checks before sending (`smsMessageMaxLength`,
-  `messengerMessageMaxLength`, `combinedStatusIdsMax`, `combinedCancelIdsMax`, `receiveCountMin`/`Max`,
-  `templatesTakeMin`/`Max`)
-- `TemplateState` — `"pendingapproval" | "approved" | "rejected"`
-- `TemplateParameterType` — `"string" | "number"` (the documented complete public set). The live
-  service also emits an undocumented third value; such a parameter is dropped from
-  `UserTemplate.parameters` rather than surfaced as a value the union says cannot exist.
-
-## Template parameters, leading zeros and decimals
-
-`TemplateParameterValue` is `string | number`, and `TemplateParameters` is a `Record` of them. A
-parameter the template declares as `number` may be sent **either** as a JSON number or as a JSON
-string, and the service substitutes a numeric string verbatim. Since JavaScript numbers are
-IEEE-754 doubles, a string is the only way to express a value whose exact digits matter:
+A parameter the template declares as `number` can be sent as a number or a string. The service
+substitutes a numeric string as written, so a string is the only way to keep exact digits:
 
 ```ts
 await client.sms.sendTemplate({
   template_id: "invoice_notice",
   parameters: {
-    invoice: "001234", // renders as 001234 — the number 1234 would lose the zeros
-    amount: "1.50",    // renders as 1.50   — the number 1.5 would lose the zero
-    count: 2,          // an ordinary integer
-    rate: 19.99,       // a decimal, where double rounding is acceptable
+    invoice: "001234", // renders 001234, not 1234
+    amount: "1.50",    // renders 1.50, not 1.5
+    count: 2,
+    rate: 19.99,       // a double, so rounding is possible
   },
   receptor: "09120000000",
-  line_number: "983000XXX",
-});
-```
-
-Reach for a string whenever the rendered text must match the digits you supplied — invoice and
-account numbers, zero-padded codes, and money amounts with a fixed number of decimal places. See
-[`examples/templates.ts`](./examples/templates.ts) for a runnable version.
-
-```ts
-import { LineSelector, WebServiceMessageStatus } from "@adsefid/sdk";
-
-await client.sms.sendBulk({
+  line_number: "983000",
   line_selector: LineSelector.BulkServiceSendBased,
-  // ...
 });
-
-if (status.receptors[0]?.status === WebServiceMessageStatus.DELIVERED) {
-  // ...
-}
 ```
 
-## File upload example
+## File upload
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -256,175 +148,152 @@ const { file_id } = await client.messenger.uploadFile({
 
 await client.messenger.sendSingle({
   message: "Here's our brochure",
-  receptor: "98912****567",
+  receptor: "989120000000",
   profile: "b72ea7f4-44b4-4f5e-91ef-91816ae5f88a",
   file_id,
 });
 ```
 
-`uploadFile` accepts a `Uint8Array` (so a Node.js `Buffer`, or the bytes from `Bun.file().bytes()`
-or `Deno.readFile()`), a `Blob`, an `ArrayBuffer`, or a `ReadableStream<Uint8Array>`. The service enforces
-its documented MIME allowlist and 15 MB limit; oversized uploads return `FILE_TOO_LARGE` (2047,
-HTTP 413).
+`file` can be a `Uint8Array` (so a Node.js `Buffer`), a `Blob`, an `ArrayBuffer` or a
+`ReadableStream<Uint8Array>`. `contentType` is required. Content is limited to 15 MiB inclusive
+(`MESSENGER_MAX_FILE_SIZE_BYTES`). A larger file throws `AdsefidValidationError` before any request
+is sent. The service also enforces a MIME allowlist and answers `FILE_TOO_LARGE` (2047) if it
+still objects to the size.
 
-## Webhook verification example
+## Errors
 
-`verifyAndParseWebhook` is async (it uses Web Crypto). It checks the signature and timestamp
-before touching the payload, and accepts the raw body as a `Uint8Array` (a Node.js `Buffer` is
-one), an `ArrayBuffer`, or a `string`. A minimal Node.js `node:http` handler:
+Every method throws on failure. All errors extend `AdsefidError`.
+
+| Error | Meaning |
+|---|---|
+| `AdsefidValidationError` | A local check failed. No request was sent. Has `field`. |
+| `AdsefidApiError` | The API returned an error envelope, or a non-2xx status without one. Has `code`, `codeName`, `httpStatusCode` and optional `details`. |
+| `AdsefidRateLimitError` | Extends `AdsefidApiError`. Codes 2035 and 2036, or any HTTP 429. |
+| `AdsefidTransportError` | Network failure, timeout, abort, or a response body that could not be parsed. |
+| `AdsefidWebhookVerificationError` | A webhook failed verification. |
+
+```ts
+import { AdsefidApiError, AdsefidRateLimitError, AdsefidTransportError, WebServiceResponseCode } from "@adsefid/sdk";
+
+try {
+  await client.sms.sendSingle({ receptor: "989120000000", line_number: "983000", line_selector: LineSelector.BulkServiceSendBased, message: "hi" });
+} catch (err) {
+  if (err instanceof AdsefidRateLimitError) {
+    console.warn("rate limited:", err.codeName);
+  } else if (err instanceof AdsefidApiError) {
+    console.error(err.code, err.codeName, err.httpStatusCode, err.details);
+    if (err.code === WebServiceResponseCode.DUPLICATE_LOCAL_ID) {
+      // the message was already accepted earlier
+    }
+  } else if (err instanceof AdsefidTransportError) {
+    console.error("transport failure:", err.message, err.cause);
+  } else {
+    throw err;
+  }
+}
+```
+
+The symbolic name is `err.codeName`, because `err.name` stays the class name. A non-2xx response
+with no error envelope has code `-1` and `codeName` `UNKNOWN_ERROR`; a bare 429 has code 2036 and
+`RATE_LIMITED`. `details.errors` maps field names (or rejected cancel IDs) to `{ code, name }`, and
+`details.items` carries indexed bulk/P2P errors. The SDK sends each request once and never
+retries. Wrap `fetchImpl` if you want backoff.
+
+## Enums and unknown values
+
+`LineSelector`, `WebServiceMessageStatus`, `WebServiceResponseCode`, `TemplateState` and
+`TemplateParameterType` are exported as constant objects with matching union types. A value the
+service adds later is kept as the raw number or string instead of failing, so numeric codes and
+`TemplateState` accept values the constants do not list yet.
+
+## Webhooks
+
+`verifyAndParseWebhook` checks the signature and timestamp, then returns a typed event. It is
+async because it uses Web Crypto. Give it the exact raw request bytes. A body that a framework
+already parsed will not verify.
 
 ```ts
 import { createServer } from "node:http";
 import {
   verifyAndParseWebhook,
   AdsefidWebhookVerificationError,
-  WEBHOOK_HEADERS_LOWERCASE,
   WEBHOOK_EVENT_TYPES,
+  WEBHOOK_HEADERS_LOWERCASE,
 } from "@adsefid/sdk";
 
-const secret = process.env.ADSEFID_WEBHOOK_SECRET!;
-
-const server = createServer((req, res) => {
+createServer((req, res) => {
   const chunks: Buffer[] = [];
   req.on("data", (chunk) => chunks.push(chunk));
   req.on("end", async () => {
-    const rawBody = Buffer.concat(chunks);
-
     let event;
     try {
       event = await verifyAndParseWebhook({
-        rawBody,
+        rawBody: Buffer.concat(chunks),
         signatureHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.signature] ?? ""),
         timestampHeader: String(req.headers[WEBHOOK_HEADERS_LOWERCASE.timestamp] ?? ""),
-        secret,
+        secret: process.env.ADSEFID_WEBHOOK_SECRET!,
       });
     } catch (err) {
       if (err instanceof AdsefidWebhookVerificationError) {
-        res.writeHead(401).end("invalid signature");
+        res.writeHead(401).end(); // do not say why
         return;
       }
       throw err;
     }
 
-    // Only event types this webhook endpoint is subscribed to (in your adsefid.com panel) ever
-    // arrive here — an endpoint subscribed to just "receive" never sees a "status" event.
     switch (event.type) {
       case WEBHOOK_EVENT_TYPES.receive:
-        for (const item of event.data) {
-          console.log("inbound SMS", item.sender, item.message);
-        }
+        for (const m of event.data) console.log("SMS from", m.sender, m.message);
         break;
       case WEBHOOK_EVENT_TYPES.status:
-        for (const item of event.data) {
-          console.log("SMS status", item.id, item.status_delivery);
-        }
-        break;
       case WEBHOOK_EVENT_TYPES.messengerStatus:
-        for (const item of event.data) {
-          console.log("messenger status", item.id, item.status_delivery);
-        }
+        for (const s of event.data) console.log("status", s.id, s.status_delivery);
         break;
     }
-
-    // Return 2xx quickly; do heavier processing asynchronously.
-    res.writeHead(200).end("ok");
+    res.writeHead(200).end();
   });
-});
-
-server.listen(3000);
+}).listen(3000);
 ```
 
-If you're using a framework that already parses the body (e.g. Express's `express.json()`), make sure you also capture the *raw* request body bytes for signature verification — the middleware's parsed object is not byte-identical to what was signed.
+The panel shows the signing secret Base64-encoded, and the service signs with the decoded bytes.
+Pass the secret exactly as shown, or pass the decoded key as a `Uint8Array`. An empty secret or key
+is always rejected. A stale timestamp (default 300 seconds, change it with `maxAgeSeconds`) or a bad
+signature throws `AdsefidWebhookVerificationError`.
 
-### The signing secret is Base64
+In a `fetch(request)` handler on Bun, Deno or Workers, use
+`new Uint8Array(await request.arrayBuffer())` as `rawBody` and `request.headers.get(...)` for the
+headers. `examples/fetch-webhook-server.ts` is a complete receiver. Each endpoint only receives the
+event types you subscribed it to in the panel. Deliveries can repeat, so make your handler
+idempotent and return a 2xx quickly.
 
-Your endpoint's signing secret is shown in the adsefid.com panel as the Base64 encoding of 32
-random bytes, and the platform signs with **those raw bytes** — not with the text of the Base64
-string. Pass the secret exactly as the panel shows it and `verifyAndParseWebhook` decodes it for
-you; a secret that is not valid Base64 throws `AdsefidWebhookVerificationError`. If you already
-hold the decoded key, pass it as a `Uint8Array` instead.
+## Using this SDK with coding agents
 
-`WEBHOOK_HEADERS`/`WEBHOOK_HEADERS_LOWERCASE` export every header name as a constant so you never
-have to type `"x-atlas-webhook-signature"` yourself; `WEBHOOK_EVENT_TYPES` does the same for the
-`type` values. You configure, per webhook endpoint, which event types it receives (in your
-adsefid.com panel) — an endpoint subscribed only to `receive` will never see a `"status"` event,
-so don't assume every deployment gets all three; handle whichever ones you've subscribed to.
+[AGENTS.md](AGENTS.md) holds the repository rules. These points prevent most wrong guesses:
 
-### Fetch-style handlers (Bun, Deno, Workers)
+- Pass the API key and webhook secret explicitly. The SDK reads no environment variables.
+- Treat a bulk or P2P response as data, not an error. Check each item's `status`.
+- Send exact numeric text (`"001234"`, `"1.50"`) as strings.
+- Give `verifyAndParseWebhook` raw bytes, never `JSON.stringify` of a parsed body.
+- There are no retries and no automatic batching. Split large requests yourself.
+- Use `instanceof AdsefidRateLimitError` before `AdsefidApiError`, and branch on `err.code`.
 
-The same function works in any `fetch(request)` handler:
+## Examples and contributing
 
-```ts
-import { verifyAndParseWebhook, WEBHOOK_HEADERS_LOWERCASE } from "@adsefid/sdk";
-
-const event = await verifyAndParseWebhook({
-  rawBody: new Uint8Array(await request.arrayBuffer()),
-  signatureHeader: request.headers.get(WEBHOOK_HEADERS_LOWERCASE.signature) ?? "",
-  timestampHeader: request.headers.get(WEBHOOK_HEADERS_LOWERCASE.timestamp) ?? "",
-  secret: env.ADSEFID_WEBHOOK_SECRET,
-});
-```
-
-[`examples/fetch-webhook-server.ts`](./examples/fetch-webhook-server.ts) is a complete receiver
-that runs unchanged with `bun run`, `deno serve`, and on Cloudflare Workers.
-
-## Versioning
-
-This SDK follows Semantic Versioning independently of the API documentation.
-
-- SDK version: **`0.9.0`** (`version` in `package.json`)
-- Verified API documentation: **`v1.14.0`**
-
-SDK releases use `v<SDK_VERSION>` tags. The two version numbers move independently.
-
-## Development
-
-Requires **Node.js 22+**, plus **Bun** and **Deno** for the cross-runtime targets. Development
-tools are pinned in `package.json`; the published package has zero runtime dependencies.
-
-```bash
-make deps   # npm install
-make fmt    # npm run format  (biome check --write .)
-make lint   # npm run lint    (biome check .) + tsc --noEmit on src and tests
-make build  # npm run build   (tsdown — emits ESM, CJS, and .d.ts into dist/)
-make test   # npm test        (vitest run)
-
-make test-bun       # the same Vitest suite, executed by Bun
-make test-deno      # the same Vitest suite, executed by Deno
-make smoke          # build, then smoke-test dist/ on Node.js, Bun, and Deno
-make check-package  # build, then publint + are-the-types-wrong on the packed tarball
-make runtimes       # test + test-bun + test-deno + smoke
-```
-
-`vitest` is a devDependency only; the published package still has zero runtime dependencies. Golden
-fixtures under `tests/fixtures/` are byte-identical to the same tree in the sibling SDK
-repositories, and `tests/fixtures.test.ts` verifies them against `CHECKSUMS.txt`.
-
-### Examples
-
-Runnable usage samples live in [`examples/`](./examples) (not published to npm — see `"files"` in
-`package.json`). Run one directly with `tsx`:
+Runnable samples are in [`examples/`](./examples): `account`, `quickstart`, `bulk-and-p2p`,
+`templates`, `status-and-cancel`, `messenger`, `webhook-server` and `fetch-webhook-server`.
+`account.ts` sends nothing, so try it first.
 
 ```bash
 export ADSEFID_API_KEY=...
-export ADSEFID_LINE_NUMBER=983000XXX
-
-npx tsx examples/account.ts            # account info, lines, profiles, templates; client config
-npx tsx examples/quickstart.ts         # send one SMS, with full error triage
-npx tsx examples/bulk-and-p2p.ts       # bulk + P2P sends, and reading a partial success
-npx tsx examples/templates.ts          # list templates and send one, incl. exact numeric values
-npx tsx examples/status-and-cancel.ts  # delivery status, cancelling, inbound messages
-npx tsx examples/messenger.ts          # upload an attachment and send it via a messenger profile
-
-ADSEFID_WEBHOOK_SECRET=... npx tsx examples/webhook-server.ts
-
-# Runtime-neutral fetch handler (build first: npm run build)
-ADSEFID_WEBHOOK_SECRET=... bun run examples/fetch-webhook-server.ts
-ADSEFID_WEBHOOK_SECRET=... deno serve --allow-env --allow-read examples/fetch-webhook-server.ts
+export ADSEFID_LINE_NUMBER=983000
+npx tsx examples/quickstart.ts
 ```
 
-`examples/account.ts` sends nothing, so it is the safest one to try first.
+To work on the SDK: `make deps`, then `make lint`, `make test` and `make build`. The test suite
+also runs under Bun and Deno (`make runtimes`). See [AGENTS.md](AGENTS.md).
 
-## License
+## Versioning and license
 
-MIT — see [LICENSE](LICENSE).
+Semantic Versioning, independent of the API documentation. SDK version **0.9.0**, verified
+against API documentation **v1.14.0**. Releases use `v<version>` tags. See
+[CHANGELOG.md](CHANGELOG.md). MIT licensed, see [LICENSE](LICENSE).

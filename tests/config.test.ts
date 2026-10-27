@@ -159,3 +159,9 @@ describe("fetch invocation", () => {
     await expect(client.user.getInfo()).rejects.toThrow(/Response body .* timed out/);
   });
 });
+
+describe("timeoutMs validation", () => {
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])("rejects %s", (timeoutMs) => {
+    expect(() => resolveClientOptions({ apiKey: "k", timeoutMs })).toThrow(AdsefidValidationError);
+  });
+});

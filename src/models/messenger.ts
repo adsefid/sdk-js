@@ -80,7 +80,7 @@ export interface SendBulkMessengerResponse {
 // 5.3 POST /v1/messenger/p2p
 // ---------------------------------------------------------------------------
 
-export interface P2pMessengerReceptorRequest {
+export interface P2PMessengerReceptorRequest {
   receptor: string;
   message: string;
   local_id?: string;
@@ -88,14 +88,14 @@ export interface P2pMessengerReceptorRequest {
 }
 
 /** Request body for `client.messenger.sendP2P` — `POST /v1/messenger/p2p` (doc §5.3): distinct messages per receptor. */
-export interface SendP2pMessengerRequest {
-  receptors: P2pMessengerReceptorRequest[];
+export interface SendP2PMessengerRequest {
+  receptors: P2PMessengerReceptorRequest[];
   send_time?: Date;
   profile: string;
   file_id?: string;
 }
 
-export interface P2pMessengerReceptorResult {
+export interface P2PMessengerReceptorResult {
   message_id: string | null;
   receptor: string;
   message: string;
@@ -105,9 +105,9 @@ export interface P2pMessengerReceptorResult {
   cost: number;
 }
 
-export interface SendP2pMessengerResponse {
+export interface SendP2PMessengerResponse {
   group_id: string;
-  receptors: P2pMessengerReceptorResult[];
+  receptors: P2PMessengerReceptorResult[];
   send_time: Date | null;
   total_count: number;
   total_cost: number;
@@ -124,29 +124,7 @@ export interface UploadMessengerFileResponse {
   file_id: string;
 }
 
-/** Allowed MIME types per doc §5.4. Provided for convenience/validation; not exhaustive-enforced. */
-export const MESSENGER_ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "application/pdf",
-  "audio/mpeg",
-  "audio/mp4",
-  "audio/aac",
-  "audio/ogg",
-  "audio/webm",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/flac",
-  "audio/opus",
-  "video/mp4",
-  "video/webm",
-  "video/ogg",
-  "video/quicktime",
-  "video/x-msvideo",
-  "video/x-matroska",
-] as const;
-
+/** Largest file content the upload endpoint accepts: 15 MiB (15,728,640 bytes), inclusive. */
 export const MESSENGER_MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------

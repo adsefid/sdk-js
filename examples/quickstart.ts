@@ -9,6 +9,7 @@ import {
   AdsefidClient,
   AdsefidRateLimitError,
   AdsefidValidationError,
+  LineSelector,
 } from "../src/index.js";
 
 async function main(): Promise<void> {
@@ -21,8 +22,15 @@ async function main(): Promise<void> {
 
   try {
     const result = await client.sms.sendSingle({
-      receptor: "98912****567",
-      line_number: "983000XXX",
+      receptor: process.env.ADSEFID_RECEPTOR ?? "989120000000",
+      line_number: process.env.ADSEFID_LINE_NUMBER ?? "983000",
+      // Required when your account has several lines with this number; see client.user.getLines().
+      ...(process.env.ADSEFID_LINE_SELECTOR
+        ? {
+            line_selector:
+              LineSelector[process.env.ADSEFID_LINE_SELECTOR as keyof typeof LineSelector],
+          }
+        : {}),
       message: "سلام، پیام تست",
     });
 

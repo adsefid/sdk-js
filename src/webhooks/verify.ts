@@ -3,6 +3,7 @@ import type { WebhookEvent } from "./events.js";
 import {
   assertFresh,
   DEFAULT_MAX_AGE_SECONDS,
+  EMPTY_SECRET_MESSAGE,
   INVALID_SECRET_MESSAGE,
   isCanonicalBase64,
   parseSignatureHeader,
@@ -50,6 +51,10 @@ function bytesToBase64(bytes: Uint8Array): string {
  */
 function decodeSecret(secret: string | Uint8Array): Uint8Array<ArrayBuffer> {
   if (typeof secret !== "string") {
+    // An empty HMAC key signs anything, so it must never verify.
+    if (secret.length === 0) {
+      throw new AdsefidWebhookVerificationError(EMPTY_SECRET_MESSAGE);
+    }
     return Uint8Array.from(secret);
   }
 

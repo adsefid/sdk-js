@@ -8,10 +8,13 @@
  *
  * Run with: npx tsx examples/bulk-and-p2p.ts
  */
-import { AdsefidClient, isWebServiceResponseCode } from "../src/index.js";
+import { AdsefidClient, isWebServiceResponseCode, LineSelector } from "../src/index.js";
 
 const apiKey = process.env.ADSEFID_API_KEY;
 const lineNumber = process.env.ADSEFID_LINE_NUMBER;
+const lineSelector = process.env.ADSEFID_LINE_SELECTOR
+  ? LineSelector[process.env.ADSEFID_LINE_SELECTOR as keyof typeof LineSelector] // needed when the number has several lines
+  : undefined;
 if (!apiKey || !lineNumber) {
   console.error("set ADSEFID_API_KEY and ADSEFID_LINE_NUMBER");
   process.exit(1);
@@ -38,6 +41,7 @@ function report(
 // report to your own record without storing our message IDs.
 const bulk = await client.sms.sendBulk({
   line_number: lineNumber,
+  ...(lineSelector === undefined ? {} : { line_selector: lineSelector }),
   message: "Scheduled maintenance tonight from 01:00 to 03:00.",
   receptors: [
     { receptor: "09120000000", local_id: "maint-1" },
@@ -56,6 +60,7 @@ console.log(`  status histogram: ${JSON.stringify(bulk.counts)}`);
 // A different message per receptor, in one request.
 const p2p = await client.sms.sendP2P({
   line_number: lineNumber,
+  ...(lineSelector === undefined ? {} : { line_selector: lineSelector }),
   messages: [
     {
       receptor: "09120000000",
