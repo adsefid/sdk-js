@@ -58,15 +58,17 @@ describe("templates", () => {
     expect(result.items[0]?.updated_at).toBeInstanceOf(Date);
   });
 
-  it("drops undocumented parameter types", async () => {
-    // The live service emits a third type this SDK does not model. Dropping it
-    // keeps the declared Record type honest at runtime.
+  it("preserves unknown parameter types", async () => {
+    // A type with no constant must survive decoding so callers can see it.
     const { user } = resourceFor("envelopes/user.get_templates.unknown_type.json");
 
     const result = await user.getTemplates();
 
-    expect(result.items[0]?.parameters).toEqual({ OTPCode: "string", amount: "number" });
-    expect(result.items[0]?.parameters).not.toHaveProperty("link");
+    expect(result.items[0]?.parameters).toEqual({
+      OTPCode: "string",
+      link: "future_type",
+      amount: "number",
+    });
   });
 
   it("sends no query string when nothing was supplied", async () => {

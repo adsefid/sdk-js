@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AdsefidValidationError } from "../src/errors.js";
+import { MESSENGER_MAX_FILE_SIZE_BYTES } from "../src/models/messenger.js";
 import { buildFileFormData } from "../src/multipart.js";
 import { MessengerResource } from "../src/resources/messenger.js";
 import { bodyJson, fetchStub, queryOf, TEST_BASE_URL, testConfig } from "./helpers/fetchStub.js";
@@ -233,17 +234,31 @@ describe("file upload", () => {
         },
       });
 
-      const form = await buildFileFormData({ file: stream, filename: "c.txt" });
+      const form = await buildFileFormData({
+        file: stream,
+        filename: "c.txt",
+        contentType: "text/plain",
+      });
       const file = form.get("file") as UploadedFile;
       expect(await file.text()).toBe("stream");
     });
 
-    it("leaves the Blob type alone when no contentType is given", async () => {
+    it("rejects content above 15 MiB inclusive", async () => {
+      const atLimit = new Blob([new Uint8Array(MESSENGER_MAX_FILE_SIZE_BYTES)]);
       const form = await buildFileFormData({
-        file: new Blob(["x"], { type: "image/png" }),
-        filename: "d.png",
+        file: atLimit,
+        filename: "a.mp4",
+        contentType: "video/mp4",
       });
-      expect((form.get("file") as UploadedFile).type).toBe("image/png");
+      expect((form.get("file") as UploadedFile).size).toBe(MESSENGER_MAX_FILE_SIZE_BYTES);
+
+      await expect(
+        buildFileFormData({
+          file: new Uint8Array(MESSENGER_MAX_FILE_SIZE_BYTES + 1),
+          filename: "a.mp4",
+          contentType: "video/mp4",
+        }),
+      ).rejects.toBeInstanceOf(AdsefidValidationError);
     });
   });
 });
@@ -269,7 +284,8 @@ describe("validation rejects before any request is sent", () => {
     ["status with neither id list", () => messenger.getStatus({})],
     [
       "upload with an empty filename",
-      () => messenger.uploadFile({ file: new Blob(["x"]), filename: "" }),
+      () =>
+        messenger.uploadFile({ file: new Blob(["x"]), filename: "", contentType: "text/plain" }),
     ],
   ];
 

@@ -14,7 +14,6 @@ import {
   assertNonEmptyArray,
   assertRequired,
   assertValidLocalId,
-  joinCsv,
   LIMITS,
   LOCAL_ID_PATTERN,
 } from "../src/validation.js";
@@ -184,17 +183,6 @@ describe("assertAtLeastOneProvided", () => {
         { name: "local_ids", value: [] },
       ]),
     ).not.toThrow();
-  });
-});
-
-describe("joinCsv", () => {
-  it.each([
-    [undefined, undefined],
-    [[], undefined],
-    [["a"], "a"],
-    [["a", "b", "c"], "a,b,c"],
-  ])("joins %o to %o", (values, expected) => {
-    expect(joinCsv(values as string[] | undefined)).toBe(expected);
   });
 });
 

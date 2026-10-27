@@ -192,13 +192,16 @@ export const TemplateState = {
   Rejected: "rejected",
 } as const;
 
-export type TemplateState = (typeof TemplateState)[keyof typeof TemplateState];
+/**
+ * A documented state, or a state a newer service adds (kept verbatim rather than rejected).
+ * The `string & {}` arm keeps editor completion for the documented values.
+ */
+export type TemplateState = (typeof TemplateState)[keyof typeof TemplateState] | (string & {});
 
 /**
  * Doc §3.6 — TemplateParameterType (lowercase strings).
- * The documented complete public set is {string, number}. The live server has
- * been observed to also emit an undocumented "url" value — intentionally not
- * exposed here; revisit if the doc is updated to include it.
+ * The documented public set is {string, number}. Any other value a newer service sends has no
+ * constant but is preserved verbatim in `UserTemplate.parameters`.
  */
 export const TemplateParameterType = {
   String: "string",
@@ -206,4 +209,5 @@ export const TemplateParameterType = {
 } as const;
 
 export type TemplateParameterType =
-  (typeof TemplateParameterType)[keyof typeof TemplateParameterType];
+  | (typeof TemplateParameterType)[keyof typeof TemplateParameterType]
+  | (string & {});

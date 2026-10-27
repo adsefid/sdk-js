@@ -228,3 +228,78 @@ describe("the error hierarchy", () => {
     expect(error.codeName).toBe("INVALID_PARAMETER");
   });
 });
+
+describe("responses without an error envelope", () => {
+  it.each([
+    ["html 502", 502, "<html>bad gateway</html>", false, -1, "UNKNOWN_ERROR"],
+    ["empty 500", 500, "", false, -1, "UNKNOWN_ERROR"],
+    ["bare 429", 429, "", true, 2036, "RATE_LIMITED"],
+    ["non-json 429", 429, "slow down", true, 2036, "RATE_LIMITED"],
+  ])("%s", async (_name, status, body, rateLimited, code, codeName) => {
+    const caught = (await userWith(status, body as string)
+      .getInfo()
+      .catch((err: unknown) => err)) as AdsefidApiError;
+
+    expect(caught).toBeInstanceOf(AdsefidApiError);
+    expect(caught.code).toBe(code);
+    expect(caught.codeName).toBe(codeName);
+    expect(caught instanceof AdsefidRateLimitError).toBe(rateLimited);
+  });
+
+  it("treats any 429 with an envelope as a rate limit", async () => {
+    const body = '{"status":"error","error":{"code":2024,"name":"INVALID_PARAMETER"}}';
+    const caught = await userWith(429, body)
+      .getInfo()
+      .catch((err: unknown) => err);
+
+    expect(caught).toBeInstanceOf(AdsefidRateLimitError);
+  });
+
+  it.each([
+    ["a non-JSON 200", "<html>ok</html>"],
+    ["a success without data", '{"status":"success"}'],
+    ["a success whose data is a list", '{"status":"success","data":[]}'],
+  ])("%s is a transport error", async (_name, body) => {
+    const caught = await userWith(200, body)
+      .getInfo()
+      .catch((err: unknown) => err);
+
+    expect(caught).toBeInstanceOf(AdsefidTransportError);
+  });
+
+  it("maps a body with a missing array to a transport error, not a TypeError", async () => {
+    const caught = await userWith(200, '{"status":"success","data":{"total":1}}')
+      .getTemplates()
+      .catch((err: unknown) => err);
+
+    expect(caught).toBeInstanceOf(AdsefidTransportError);
+  });
+});
+
+describe("per-call cancellation", () => {
+  it("aborts a request when the caller's signal fires", async () => {
+    const hanging: typeof fetch = (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+      });
+    const user = new UserResource(testConfig(fetchStub(), { fetchImpl: hanging }));
+    const controller = new AbortController();
+
+    const pending = user.getInfo({ signal: controller.signal }).catch((err: unknown) => err);
+    controller.abort();
+    const caught = (await pending) as AdsefidTransportError;
+
+    expect(caught).toBeInstanceOf(AdsefidTransportError);
+    expect(caught.message).toContain("aborted by the caller");
+  });
+
+  it("rejects without sending when the signal is already aborted", async () => {
+    const stub = fetchStub({ body: "{}" });
+    const user = new UserResource(testConfig(stub));
+
+    const caught = await user.getInfo({ signal: AbortSignal.abort() }).catch((err: unknown) => err);
+
+    expect(caught).toBeInstanceOf(AdsefidTransportError);
+    expect(stub.calls).toHaveLength(0);
+  });
+});

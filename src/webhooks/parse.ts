@@ -12,6 +12,7 @@ import { WEBHOOK_EVENT_TYPES } from "./headers.js";
 export const DEFAULT_MAX_AGE_SECONDS = 300;
 export const INVALID_SECRET_MESSAGE =
   "Webhook secret is not valid Base64; use the secret exactly as shown in your adsefid.com panel, or pass the decoded key as a Uint8Array";
+export const EMPTY_SECRET_MESSAGE = "Webhook signing key is empty";
 export const SIGNATURE_MISMATCH_MESSAGE = "Webhook signature mismatch";
 
 const SIGNATURE_PREFIX = "v1=";

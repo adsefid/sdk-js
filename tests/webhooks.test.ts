@@ -154,6 +154,46 @@ describe("verifyAndParseWebhook", () => {
     // report either failure depending on the order the checks run in.
     const cases: Array<[string, () => Promise<WebhookEvent>]> = [
       [
+        "an empty Uint8Array key",
+        () => {
+          const timestamp = nowTimestamp();
+          const emptyKeySignature = `v1=${createHmac("sha256", Buffer.alloc(0))
+            .update(`${timestamp}.`)
+            .update(GOLDEN_BODY)
+            .digest("base64")}`;
+          return verifyAndParseWebhook({
+            rawBody: GOLDEN_BODY,
+            signatureHeader: emptyKeySignature,
+            timestampHeader: timestamp,
+            secret: new Uint8Array(0),
+          });
+        },
+      ],
+      [
+        "an empty string secret",
+        () => {
+          const { timestamp, signature } = freshlySigned();
+          return verifyAndParseWebhook({
+            rawBody: GOLDEN_BODY,
+            signatureHeader: signature,
+            timestampHeader: timestamp,
+            secret: "",
+          });
+        },
+      ],
+      [
+        "a non-ASCII signature",
+        () => {
+          const { timestamp } = freshlySigned();
+          return verifyAndParseWebhook({
+            rawBody: GOLDEN_BODY,
+            signatureHeader: "v1=é",
+            timestampHeader: timestamp,
+            secret: VECTOR.secret,
+          });
+        },
+      ],
+      [
         "a tampered signature",
         () =>
           verifyAndParseWebhook({

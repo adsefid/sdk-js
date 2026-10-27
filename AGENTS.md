@@ -25,14 +25,20 @@ notes over an ambiguous doc reading:
   the literal string "{timestamp}.{raw_body}", and the raw digest bytes are Base64-encoded
   directly — there is no intermediate hex-encoding step, even though a literal reading of some
   spec pseudo-code can suggest one. See `src/webhooks/verify.ts`.
-- `TemplateParameterType` has an undocumented third value in the wild. The documented, supported
-  public set is {string, number}. The live API has been observed to also emit a `url` value for
-  some templates; this SDK intentionally models only the two documented values — do not add
-  support for it without first confirming it against current, documented API behavior. See
-  `src/enums.ts`.
+- Only documented values get constants; `TemplateState` and `TemplateParameterType` are
+  `... | (string & {})` unions so any other wire value is preserved verbatim, never dropped. Add a
+  constant only for a value the documentation lists. See `src/enums.ts`.
 - `error.details` uses the shared typed `ApiErrorDetails` shape: optional `errors` maps field names
   (or rejected cancel IDs) to `{code,name}`, and optional `items` carries indexed bulk/P2P errors.
   Keep numeric codes forward-compatible.
+- `line_selector` is required when the account has two or more lines with the same number. Without
+  it the service answers `LINE_NOT_FOUND` (2002), even for a number the account owns.
+- GET requests are capped at 8,000 characters of path and query. The service's proxy answers an HTML
+  HTTP 414 above 8 KiB, so the documented 2,000-ID status lookup cannot be sent as one GET (about 200
+  IDs fit). The SDK joins IDs with literal commas, drops duplicates, and refuses an oversized GET
+  locally with its validation error. Cancel is a POST and is not affected.
+- Timestamps carry up to 7 fractional digits (`2026-09-19T11:43:10.4030292+03:30`) and mixed offsets;
+  parsers must accept both.
 - Bulk/P2P item validation happens in the API. Validate request-level fields locally, but send item
   values unchanged so valid siblings can still succeed.
 
@@ -46,9 +52,10 @@ src/
   index.ts                 the single barrel export — every public symbol comes from here
   client.ts                AdsefidClient: constructs config, owns .sms/.messenger/.user
   config.ts                AdsefidClientOptions type + resolveClientOptions() defaults
+  wire.ts                  mapResponse(): turns a malformed response body into AdsefidTransportError
   http.ts                  sendRequest(): builds fetch call, applies timeout, parses envelope, throws typed errors
   multipart.ts             buildFileFormData(): Blob/ArrayBuffer/ReadableStream -> FormData with field "file"
-  validation.ts            LIMITS (every request bound) + LOCAL_ID_PATTERN + assert* pre-flight checks + joinCsv()
+  validation.ts            LIMITS (every request bound) + LOCAL_ID_PATTERN + assert* pre-flight checks
   errors.ts                AdsefidError hierarchy
   enums.ts                 LineSelector, WebServiceMessageStatus, WebServiceResponseCode (+ HTTP status map),
                             TemplateState, TemplateParameterType, WebServiceStatus — all `as const` objects —
@@ -128,6 +135,12 @@ handing off a change, run `make runtimes` and `make check-package`.
   `verifyAndParseWebhook` decodes before keying the HMAC, accepts a `Uint8Array` for a pre-decoded
   key, and hashes the raw body bytes rather than a re-encoded string. Keying the HMAC with the
   UTF-8 bytes of the Base64 string does not verify against the live service.
+- **An empty webhook key is rejected** (an empty HMAC key signs anything).
+- **Response shapes.** `sendRequest` checks the envelope and that `data` is an object (or an array
+  with `expect: "array"`); each resource wraps its model mapping in `mapResponse` (`src/wire.ts`) so a
+  malformed body surfaces as `AdsefidTransportError`, never a bare `TypeError`. Every resource method
+  takes a trailing `CallOptions` (`{ signal }`).
+- **Uploads** require `contentType` and are capped at `MESSENGER_MAX_FILE_SIZE_BYTES` (15 MiB).
 - **No retry logic anywhere in this SDK.** Every request is a single attempt.
 
 ## Build / typecheck

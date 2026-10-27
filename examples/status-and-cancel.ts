@@ -7,10 +7,13 @@
  *
  * Run with: npx tsx examples/status-and-cancel.ts
  */
-import { AdsefidClient } from "../src/index.js";
+import { AdsefidClient, LineSelector } from "../src/index.js";
 
 const apiKey = process.env.ADSEFID_API_KEY;
 const lineNumber = process.env.ADSEFID_LINE_NUMBER;
+const lineSelector = process.env.ADSEFID_LINE_SELECTOR
+  ? LineSelector[process.env.ADSEFID_LINE_SELECTOR as keyof typeof LineSelector] // needed when the number has several lines
+  : undefined;
 if (!apiKey || !lineNumber) {
   console.error("set ADSEFID_API_KEY and ADSEFID_LINE_NUMBER");
   process.exit(1);
@@ -23,6 +26,7 @@ const sendTime = new Date(Date.now() + 2 * 60 * 60_000);
 const sent = await client.sms.sendSingle({
   receptor: "09120000000",
   line_number: lineNumber,
+  ...(lineSelector === undefined ? {} : { line_selector: lineSelector }),
   message: "This one is scheduled, and about to be cancelled.",
   send_time: sendTime,
   local_id: "demo-cancel-1",

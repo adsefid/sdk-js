@@ -18,6 +18,7 @@ export {
   AdsefidValidationError,
   AdsefidWebhookVerificationError,
 } from "./errors.js";
+export type { CallOptions } from "./http.js";
 export type {
   ApiEnvelope,
   ApiErrorDetails,
@@ -42,22 +43,19 @@ export type {
   GetMessengerStatusQuery,
   GetMessengerStatusResponse,
   MessengerStatusReceptor,
-  P2pMessengerReceptorRequest,
-  P2pMessengerReceptorResult,
+  P2PMessengerReceptorRequest,
+  P2PMessengerReceptorResult,
   SendBulkMessengerRequest,
   SendBulkMessengerResponse,
-  SendP2pMessengerRequest,
-  SendP2pMessengerResponse,
+  SendP2PMessengerRequest,
+  SendP2PMessengerResponse,
   SendSingleMessengerRequest,
   SendSingleMessengerResponse,
   SendTemplateMessengerRequest,
   SendTemplateMessengerResponse,
   UploadMessengerFileResponse,
 } from "./models/messenger.js";
-export {
-  MESSENGER_ALLOWED_MIME_TYPES,
-  MESSENGER_MAX_FILE_SIZE_BYTES,
-} from "./models/messenger.js";
+export { MESSENGER_MAX_FILE_SIZE_BYTES } from "./models/messenger.js";
 export type {
   BulkSmsReceptorRequest,
   BulkSmsReceptorResult,
@@ -67,13 +65,13 @@ export type {
   GetReceivedSmsResponse,
   GetSmsStatusQuery,
   GetSmsStatusResponse,
-  P2pSmsMessageRequest,
-  P2pSmsMessageResult,
+  P2PSmsMessageRequest,
+  P2PSmsMessageResult,
   ReceivedSmsMessage,
   SendBulkSmsRequest,
   SendBulkSmsResponse,
-  SendP2pSmsRequest,
-  SendP2pSmsResponse,
+  SendP2PSmsRequest,
+  SendP2PSmsResponse,
   SendSingleSmsRequest,
   SendSingleSmsResponse,
   SendTemplateSmsRequest,

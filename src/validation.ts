@@ -99,11 +99,3 @@ export function assertAtLeastOneProvided(
     throw new AdsefidValidationError(`At least one of ${names} is required`);
   }
 }
-
-/** Joins a CSV-style query param array (`message_ids`, `local_ids`, ...) into one string. */
-export function joinCsv(values: string[] | undefined): string | undefined {
-  if (!values || values.length === 0) {
-    return undefined;
-  }
-  return values.join(",");
-}

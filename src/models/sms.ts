@@ -81,7 +81,7 @@ export interface SendBulkSmsResponse {
 // 4.3 POST /v1/sms/p2p
 // ---------------------------------------------------------------------------
 
-export interface P2pSmsMessageRequest {
+export interface P2PSmsMessageRequest {
   receptor: string;
   message: string;
   local_id?: string;
@@ -89,14 +89,14 @@ export interface P2pSmsMessageRequest {
 }
 
 /** Request body for `client.sms.sendP2P` — `POST /v1/sms/p2p` (doc §4.3): distinct messages per receptor. */
-export interface SendP2pSmsRequest {
-  messages: P2pSmsMessageRequest[];
+export interface SendP2PSmsRequest {
+  messages: P2PSmsMessageRequest[];
   send_time?: Date;
   line_number: string;
   line_selector?: LineSelector;
 }
 
-export interface P2pSmsMessageResult {
+export interface P2PSmsMessageResult {
   message_id: string | null;
   receptor: string;
   status: WebServiceStatus;
@@ -107,9 +107,9 @@ export interface P2pSmsMessageResult {
   cost: number;
 }
 
-export interface SendP2pSmsResponse {
+export interface SendP2PSmsResponse {
   group_id: string;
-  messages: P2pSmsMessageResult[];
+  messages: P2PSmsMessageResult[];
   send_time: Date | null;
   line_number: string;
   line_selector: LineSelector;

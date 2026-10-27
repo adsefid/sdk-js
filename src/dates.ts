@@ -4,13 +4,15 @@ import {
   type AdsefidWebhookVerificationError,
 } from "./errors.js";
 
-export type Wire<T> = T extends Date
-  ? string
-  : T extends readonly (infer TItem)[]
-    ? Wire<TItem>[]
-    : T extends object
-      ? { [TKey in keyof T]: Wire<T[TKey]> }
-      : T;
+export type Wire<T> = T extends string
+  ? T
+  : T extends Date
+    ? string
+    : T extends readonly (infer TItem)[]
+      ? Wire<TItem>[]
+      : T extends object
+        ? { [TKey in keyof T]: Wire<T[TKey]> }
+        : T;
 
 type DateParseError = typeof AdsefidTransportError | typeof AdsefidWebhookVerificationError;
 
