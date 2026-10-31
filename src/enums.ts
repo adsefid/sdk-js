@@ -200,7 +200,7 @@ export type TemplateState = (typeof TemplateState)[keyof typeof TemplateState] |
 
 /**
  * Doc §3.6 — TemplateParameterType (lowercase strings).
- * The documented public set is {string, number}. Any other value a newer service sends has no
+ * The public named types are {string, number}. Any other value a newer service sends has no
  * constant but is preserved verbatim in `UserTemplate.parameters`.
  */
 export const TemplateParameterType = {

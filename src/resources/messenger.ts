@@ -190,7 +190,7 @@ export class MessengerResource {
     }));
   }
 
-  /** GET /v1/messenger/status — doc §5.7 */
+  /** QUERY /v1/messenger/status — up to 2,000 distinct IDs in a JSON body (doc §5.7). */
   public async getStatus(
     query: GetMessengerStatusQuery,
     options?: CallOptions,
@@ -206,11 +206,11 @@ export class MessengerResource {
     const response = await sendRequest<Wire<GetMessengerStatusResponse>>(
       this.config,
       {
-        method: "GET",
+        method: "QUERY",
         path: "/v1/messenger/status",
-        query: {
-          message_ids: query.message_ids,
-          local_ids: query.local_ids,
+        jsonBody: {
+          message_ids: query.message_ids?.length ? [...new Set(query.message_ids)] : undefined,
+          local_ids: query.local_ids?.length ? [...new Set(query.local_ids)] : undefined,
         },
       },
       options,

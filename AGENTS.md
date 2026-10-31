@@ -12,7 +12,7 @@ parity there.
 
 The API surface (endpoints, field names, types, validation rules, enums, example payloads,
 webhook behavior) is defined by the published adsefid.com SMS Web Service API documentation.
-This SDK is verified against doc version v1.14.0 (release date 2026-10-12). Before changing any
+This SDK is verified against doc version v1.15.0 (release date 2026-10-28). Before changing any
 endpoint, request/response model, or enum, re-read the relevant documentation. The SDK follows
 independent Semantic Versioning from `package.json`; never copy the API-document version into
 package metadata. Record both versions in the README.
@@ -29,14 +29,14 @@ notes over an ambiguous doc reading:
   `... | (string & {})` unions so any other wire value is preserved verbatim, never dropped. Add a
   constant only for a value the documentation lists. See `src/enums.ts`.
 - `error.details` uses the shared typed `ApiErrorDetails` shape: optional `errors` maps field names
-  (or rejected cancel IDs) to `{code,name}`, and optional `items` carries indexed bulk/P2P errors.
+  to `{code,name}`, and optional `items` carries indexed bulk/P2P errors.
   Keep numeric codes forward-compatible.
 - `line_selector` is required when the account has two or more lines with the same number. Without
-  it the service answers `LINE_NOT_FOUND` (2002), even for a number the account owns.
-- GET requests are capped at 8,000 characters of path and query. The service's proxy answers an HTML
-  HTTP 414 above 8 KiB, so the documented 2,000-ID status lookup cannot be sent as one GET (about 200
-  IDs fit). The SDK joins IDs with literal commas, drops duplicates, and refuses an oversized GET
-  locally with its validation error. Cancel is a POST and is not affected.
+  it the service answers `INVALID_LINE_SELECTOR` (2017) on `line_selector`. A selector that matches
+  no line returns `LINE_NOT_FOUND` (2002).
+- Status lookups use `QUERY` with JSON arrays, with at most 2,000 distinct message/local IDs
+  combined. Unmatched cancellation IDs stay in `failed_to_cancel` with status 2046 or 2029;
+  a missing local ID match has a null message ID. Preserve unknown per-item codes.
 - Timestamps carry up to 7 fractional digits (`2026-09-19T11:43:10.4030292+03:30`) and mixed offsets;
   parsers must accept both.
 - Bulk/P2P item validation happens in the API. Validate request-level fields locally, but send item
@@ -107,6 +107,8 @@ handing off a change, run `make runtimes` and `make check-package`.
 
 ## Hard rules
 
+- **All enums must preserve unknown wire values.** Keep raw integers/strings without raising
+  errors for unnamed values.
 - **Every change ships with tests.** `tests/` runs on Vitest (`make test`), a devDependency only —
   the published package keeps its zero runtime dependencies. Endpoint tests are table-driven
   (`it.each`) rather than one function per case. `tsconfig.test.json` type-checks `tests/`

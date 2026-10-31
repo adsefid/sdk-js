@@ -151,10 +151,10 @@ export interface SendTemplateSmsResponse {
 }
 
 // ---------------------------------------------------------------------------
-// 4.5 GET /v1/sms/status
+// 4.5 QUERY /v1/sms/status
 // ---------------------------------------------------------------------------
 
-/** Query params for `client.sms.getStatus` — `GET /v1/sms/status` (doc §4.5). */
+/** JSON body for `client.sms.getStatus` — `QUERY /v1/sms/status` (doc §4.5). */
 export type GetSmsStatusQuery = StatusQuery;
 
 export interface SmsStatusReceptor {

@@ -165,10 +165,10 @@ export interface SendTemplateMessengerResponse {
 }
 
 // ---------------------------------------------------------------------------
-// 5.7 GET /v1/messenger/status
+// 5.7 QUERY /v1/messenger/status
 // ---------------------------------------------------------------------------
 
-/** Query params for `client.messenger.getStatus` — `GET /v1/messenger/status` (doc §5.7). */
+/** JSON body for `client.messenger.getStatus` — `QUERY /v1/messenger/status` (doc §5.7). */
 export type GetMessengerStatusQuery = StatusQuery;
 
 export interface MessengerStatusReceptor {

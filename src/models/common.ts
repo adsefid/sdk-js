@@ -66,8 +66,10 @@ export type { WebServiceStatus };
 
 /** Shared shape of a single cancelled/failed-to-cancel entry (doc §4.6/§5.5). */
 export interface CancelledMessage {
-  message_id: string;
+  /** Null when a requested local ID matches no message. */
+  message_id: string | null;
   local_id: string | null;
+  /** Message status, or an error code for an unmatched identifier. */
   status: WebServiceStatus;
 }
 
@@ -82,7 +84,7 @@ export interface CancelResponse {
   failed_to_cancel: CancelledMessage[];
 }
 
-/** Shared shape of the `getStatus` query params (see `GetSmsStatusQuery`/`GetMessengerStatusQuery`): at least one of the two fields is required. */
+/** Shared shape of the `getStatus` JSON body (see `GetSmsStatusQuery`/`GetMessengerStatusQuery`): at least one of the two fields is required. */
 export interface StatusQuery {
   message_ids?: string[];
   local_ids?: string[];

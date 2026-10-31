@@ -138,7 +138,7 @@ export class SmsResource {
     }));
   }
 
-  /** GET /v1/sms/status — doc §4.5 */
+  /** QUERY /v1/sms/status — up to 2,000 distinct IDs in a JSON body (doc §4.5). */
   public async getStatus(
     query: GetSmsStatusQuery,
     options?: CallOptions,
@@ -154,11 +154,11 @@ export class SmsResource {
     const response = await sendRequest<Wire<GetSmsStatusResponse>>(
       this.config,
       {
-        method: "GET",
+        method: "QUERY",
         path: "/v1/sms/status",
-        query: {
-          message_ids: query.message_ids,
-          local_ids: query.local_ids,
+        jsonBody: {
+          message_ids: query.message_ids?.length ? [...new Set(query.message_ids)] : undefined,
+          local_ids: query.local_ids?.length ? [...new Set(query.local_ids)] : undefined,
         },
       },
       options,
