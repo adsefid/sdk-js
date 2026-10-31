@@ -8,7 +8,7 @@ import {
 } from "./errors.js";
 import type { ErrorEnvelope, SuccessEnvelope } from "./models/common.js";
 
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "QUERY";
 
 /** Per-call options accepted as the last argument of every resource method. */
 export interface CallOptions {

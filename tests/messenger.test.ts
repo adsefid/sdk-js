@@ -3,7 +3,7 @@ import { AdsefidValidationError } from "../src/errors.js";
 import { MESSENGER_MAX_FILE_SIZE_BYTES } from "../src/models/messenger.js";
 import { buildFileFormData } from "../src/multipart.js";
 import { MessengerResource } from "../src/resources/messenger.js";
-import { bodyJson, fetchStub, queryOf, TEST_BASE_URL, testConfig } from "./helpers/fetchStub.js";
+import { bodyJson, fetchStub, TEST_BASE_URL, testConfig } from "./helpers/fetchStub.js";
 import { fixtureText } from "./helpers/fixtures.js";
 
 // @types/node 18 (this SDK's floor) does not declare the global `File`, though
@@ -96,9 +96,8 @@ describe("request building", () => {
 
     const result = await messenger.getStatus({ message_ids: ["m1"], local_ids: ["l1"] });
 
-    const query = queryOf(stub.only());
-    expect(query.get("message_ids")).toBe("m1");
-    expect(query.get("local_ids")).toBe("l1");
+    expect(stub.only().method).toBe("QUERY");
+    expect(bodyJson(stub.only())).toEqual({ message_ids: ["m1"], local_ids: ["l1"] });
     expect(result.receptors[0]?.send_time).toBeInstanceOf(Date);
     expect(result.receptors[0]?.delivery_time).toBeInstanceOf(Date);
   });

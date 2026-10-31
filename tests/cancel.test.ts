@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AdsefidClient } from "../src/client.js";
+import { WebServiceMessageStatus, WebServiceResponseCode } from "../src/enums.js";
 import { AdsefidValidationError } from "../src/errors.js";
 import { bodyJson, fetchStub, testConfig } from "./helpers/fetchStub.js";
 import { fixtureText } from "./helpers/fixtures.js";
@@ -37,4 +38,22 @@ describe.each(["sms", "messenger"] as const)("%s cancellation", (area) => {
       }
     },
   );
+});
+
+describe.each(["sms", "messenger"] as const)("%s cancellation outcomes", (area) => {
+  it("preserves nullable identifiers, item errors, and unknown codes", async () => {
+    const stub = fetchStub({ body: fixtureText("envelopes/cancel.partial_success.json") });
+    const client = new AdsefidClient(testConfig(stub));
+    const response = await client[area].cancel({ local_ids: ["missing-local"] });
+    expect(response.cancelled_messages[0]?.status).toBe(WebServiceMessageStatus.CANCELED);
+    expect(response.failed_to_cancel.map((item) => item.status)).toEqual([
+      WebServiceMessageStatus.SENDING,
+      WebServiceResponseCode.INVALID_MESSAGE_IDS,
+      WebServiceResponseCode.INVALID_LOCAL_IDS,
+      2999,
+    ]);
+    expect(response.failed_to_cancel[1]?.local_id).toBeNull();
+    expect(response.failed_to_cancel[2]?.message_id).toBeNull();
+    expect(response.failed_to_cancel[2]?.local_id).toBe("missing-local");
+  });
 });

@@ -9,7 +9,7 @@ cancels unsent messages, reads inbound SMS, looks up account data, and verifies 
 
 It is built only on Web-standard APIs (`fetch`, `FormData`, `Blob`, `AbortController`, Web
 Crypto), has no runtime dependencies, and ships its own types. It is verified against API
-documentation **v1.14.0**. Sibling SDKs exist for .NET, Go, PHP and Python with the same shape.
+documentation **v1.15.0**. Sibling SDKs exist for .NET, Go, PHP and Python with the same shape.
 
 **Server-side only.** The SDK holds your secret API key. Never bundle it into browser code.
 
@@ -46,7 +46,7 @@ The SDK never reads environment variables. Pass the API key yourself. It goes ou
 
 **Line selector.** An account can own several lines with the same number, each with its own
 selector (see `client.user.getLines()`). When it does, `line_selector` is required on every SMS
-send; without it the service answers `LINE_NOT_FOUND`.
+send; without it the service answers `INVALID_LINE_SELECTOR`.
 
 ## Configuration
 
@@ -84,15 +84,17 @@ very long fractions can lose precision. Round for display.
 | Resource | Methods | Endpoint |
 |---|---|---|
 | `client.sms` | `sendSingle`, `sendBulk`, `sendP2P`, `sendTemplate` | `POST /v1/sms/{single,bulk,p2p,template}` |
-| `client.sms` | `getStatus`, `cancel`, `getReceived` | `GET /v1/sms/status`, `POST /v1/sms/cancel`, `GET /v1/sms/receive` |
+| `client.sms` | `getStatus`, `cancel`, `getReceived` | `QUERY /v1/sms/status`, `POST /v1/sms/cancel`, `GET /v1/sms/receive` |
 | `client.messenger` | `sendSingle`, `sendBulk`, `sendP2P`, `sendTemplate` | `POST /v1/messenger/{single,bulk,p2p,template}` |
 | `client.messenger` | `uploadFile({ file, filename, contentType })` | `POST /v1/messenger/file` |
-| `client.messenger` | `getStatus`, `cancel` | `GET /v1/messenger/status`, `POST /v1/messenger/cancel` |
+| `client.messenger` | `getStatus`, `cancel` | `QUERY /v1/messenger/status`, `POST /v1/messenger/cancel` |
 | `client.user` | `getInfo`, `getLines`, `getProfiles`, `getTemplates(query?)` | `GET /v1/user/{info,lines,profiles,templates}` |
 
 Field names are snake_case, exactly as in the API. Cancel accepts messages that are awaiting
 approval, queued or scheduled, with no refund, and at most 2,000 distinct IDs across both lists.
-Status lookups are GET requests, so the URL caps them at about 200 IDs per call. The SDK raises a validation error past 8,000 URL characters instead of letting the gateway answer HTTP 414.
+Status lookups use `QUERY` with JSON arrays, supporting up to 2,000 distinct IDs in one request.
+Unmatched cancellation IDs appear in `failed_to_cancel` with error codes 2046 or 2029; a missing
+local ID match has a null message ID. Check each item's status or error code.
 
 ## Bulk and P2P: partial success is not an error
 
@@ -195,7 +197,7 @@ try {
 
 The symbolic name is `err.codeName`, because `err.name` stays the class name. A non-2xx response
 with no error envelope has code `-1` and `codeName` `UNKNOWN_ERROR`; a bare 429 has code 2036 and
-`RATE_LIMITED`. `details.errors` maps field names (or rejected cancel IDs) to `{ code, name }`, and
+`RATE_LIMITED`. `details.errors` maps field names to `{ code, name }`, and
 `details.items` carries indexed bulk/P2P errors. The SDK sends each request once and never
 retries. Wrap `fetchImpl` if you want backoff.
 
@@ -295,5 +297,5 @@ also runs under Bun and Deno (`make runtimes`). See [AGENTS.md](AGENTS.md).
 ## Versioning and license
 
 Semantic Versioning, independent of the API documentation. SDK version **1.0.0**, verified
-against API documentation **v1.14.0**. Releases use `v<version>` tags. See
+against API documentation **v1.15.0**. Releases use `v<version>` tags. See
 [CHANGELOG.md](CHANGELOG.md). MIT licensed, see [LICENSE](LICENSE).

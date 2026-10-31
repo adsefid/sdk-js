@@ -53,7 +53,7 @@ describe("templates", () => {
     expect(result.total).toBe(1);
     expect(result.items[0]?.state).toBe("approved");
     expect(result.items[0]?.parameters).toEqual({ OTPCode: "string", amount: "number" });
-    expect(result.items[0]?.description).toBeNull();
+    expect(result.items[0]?.description).toBe("");
     expect(result.items[0]?.created_at).toBeInstanceOf(Date);
     expect(result.items[0]?.updated_at).toBeInstanceOf(Date);
   });
@@ -69,6 +69,7 @@ describe("templates", () => {
       link: "future_type",
       amount: "number",
     });
+    expect(result.items[0]?.description).toBeNull();
   });
 
   it("sends no query string when nothing was supplied", async () => {
