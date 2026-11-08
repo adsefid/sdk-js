@@ -296,6 +296,6 @@ also runs under Bun and Deno (`make runtimes`). See [AGENTS.md](AGENTS.md).
 
 ## Versioning and license
 
-Semantic Versioning, independent of the API documentation. SDK version **1.0.0**, verified
+Semantic Versioning, independent of the API documentation. SDK version **1.1.0**, verified
 against API documentation **v1.15.0**. Releases use `v<version>` tags. See
 [CHANGELOG.md](CHANGELOG.md). MIT licensed, see [LICENSE](LICENSE).
